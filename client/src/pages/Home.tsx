@@ -69,6 +69,7 @@ export default function Home() {
   const [locationName, setLocationName] = useState("");
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState(false);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -101,12 +102,39 @@ export default function Home() {
     enabled: showSearch && (!!searchTerm || !!location || !!locationName),
   });
 
-  const handleSearch = () => {
-    if (!searchTerm && !location && !locationName) {
-      toast.error("Please enter a search term or location");
-      return;
+  // Trigger search when location is set after pending search
+  useEffect(() => {
+    if (pendingSearch && location) {
+      setShowSearch(true);
+      setPendingSearch(false);
     }
-    setShowSearch(true);
+  }, [location, pendingSearch]);
+
+  const handleSearch = () => {
+    // If no location is provided, automatically use geolocation
+    if (!location && !locationName) {
+      if ("geolocation" in navigator) {
+        toast.info("Using your current location...");
+        setPendingSearch(true);
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          (error) => {
+            setPendingSearch(false);
+            toast.error("Could not get your location. Please enter a location manually.");
+            console.log("Geolocation error:", error);
+          }
+        );
+      } else {
+        toast.error("Geolocation is not supported. Please enter a location manually.");
+      }
+    } else {
+      setShowSearch(true);
+    }
   };
 
   return (

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1763340863569,
+      "tag": "0000_luxuriant_toro",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1763340939727,
+      "tag": "0001_brainy_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763416097765,
+      "tag": "0002_lumpy_timeslip",
+      "breakpoints": true
+    }
+  ]
+}

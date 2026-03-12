@@ -6,13 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Building2, Users, Award, ArrowRight, User, ChevronDown, LogOut, Trophy } from "lucide-react";
+import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield } from "lucide-react";
 import { Link } from "wouter";
-import { APP_TITLE, getLoginUrl } from "@/const";
 
 interface Business {
   id: string;
@@ -42,9 +40,8 @@ const CATEGORIES = [
   { value: "auto", label: "Automotive" },
 ];
 
-// Calculate distance between two coordinates using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3959; // Earth's radius in miles
+  const R = 3959;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
@@ -57,11 +54,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
-  const logout = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      window.location.reload();
-    },
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<"best_match" | "rating" | "review_count" | "distance">("best_match");
@@ -102,7 +94,6 @@ export default function Home() {
     enabled: showSearch && (!!searchTerm || !!location || !!locationName),
   });
 
-  // Trigger search when location is set after pending search
   useEffect(() => {
     if (pendingSearch && location) {
       setShowSearch(true);
@@ -111,7 +102,6 @@ export default function Home() {
   }, [location, pendingSearch]);
 
   const handleSearch = () => {
-    // If no location is provided, automatically use geolocation
     if (!location && !locationName) {
       if ("geolocation" in navigator) {
         toast.info("Using your current location...");
@@ -138,103 +128,64 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-gray-900">
-              <Building2 className="w-6 h-6 text-primary" />
-              {APP_TITLE}
-            </Link>
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/trending" className="text-gray-600 hover:text-gray-900 font-medium transition">
-                Trending
-              </Link>
-              <Link href="/deals" className="text-gray-600 hover:text-gray-900 font-medium transition">
-                Deals
-              </Link>
-              <Link href="/community-reviews" className="text-gray-600 hover:text-gray-900 font-medium transition">
-                Reviews
-              </Link>
-              <Link href="/favorites" className="text-gray-600 hover:text-gray-900 font-medium transition">
-                Favorites
-              </Link>
-              {isAuthenticated ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="gap-2">
-                      <User className="w-4 h-4" />
-                      {user?.name || "User"}
-                      <ChevronDown className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href="/badges" className="flex items-center cursor-pointer">
-                        <Trophy className="w-4 h-4 mr-2" />
-                        View Badges
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => logout.mutate()}>
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Button variant="default" asChild>
-                  <a href={getLoginUrl()}>Sign In</a>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <div>
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-          <div className="container py-20">
-            {!isAuthenticated && (
-              <div className="text-center mb-8">
-                <Badge variant="secondary" className="bg-blue-500/20 text-blue-200 border-blue-400/30 px-4 py-2 text-sm font-medium">
-                  ✨ Create an account to save favorites and get personalized recommendations
-                </Badge>
-              </div>
-            )}
+      <div className="hero-gradient text-white relative">
+        {/* Floating decorative blobs */}
+        <div className="blob w-72 h-72 bg-violet-500 top-10 -left-20 animate-float" />
+        <div className="blob w-96 h-96 bg-indigo-500 -bottom-20 right-10 animate-float-delayed" />
+        <div className="blob w-48 h-48 bg-pink-500 top-1/2 left-1/3 opacity-20 animate-float" />
+
+        <div className="container py-24 relative z-10">
+          {!isAuthenticated && (
+            <div className="text-center mb-8 animate-slide-up">
+              <Badge className="bg-white/10 text-violet-200 border-violet-400/30 px-5 py-2.5 text-sm font-medium backdrop-blur-sm hover:bg-white/15 transition">
+                Create an account to save favorites and get personalized recommendations
+              </Badge>
+            </div>
+          )}
+
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-              Discover and Support<br />
-              <span className="text-blue-400">Local Businesses</span>
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight animate-slide-up tracking-tight">
+              Discover & Support<br />
+              <span className="text-gradient">Local Businesses</span>
             </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-              Connect with amazing small businesses in your community.<br />
+            <p className="text-lg md:text-xl text-gray-300/90 mb-10 leading-relaxed max-w-2xl mx-auto animate-slide-up-delayed">
+              Connect with amazing small businesses in your community.
               Find local gems, read reviews, and help your neighborhood thrive.
             </p>
 
-            {/* Search Box */}
-            <div className="bg-white rounded-lg shadow-2xl p-6 mt-12">
+            {/* Search Box - Glassmorphism */}
+            <div className="glass-dark rounded-2xl p-6 md:p-8 mt-4 animate-slide-up-delayed-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <Input
-                  placeholder="What are you looking for?"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="text-gray-900 h-12"
-                />
-                <div className="relative">
+                <div>
+                  <label htmlFor="search-term" className="sr-only">Search term</label>
                   <Input
-                    placeholder="Location (or use current location)"
+                    id="search-term"
+                    placeholder="What are you looking for?"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-12 rounded-xl focus:ring-violet-400 focus:border-violet-400"
+                    aria-label="Search for businesses"
+                  />
+                </div>
+                <div className="relative">
+                  <label htmlFor="search-location" className="sr-only">Location</label>
+                  <Input
+                    id="search-location"
+                    placeholder="Location (or use current)"
                     value={locationName}
                     onChange={(e) => setLocationName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="text-gray-900 h-12 pr-12"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-12 pr-12 rounded-xl focus:ring-violet-400 focus:border-violet-400"
+                    aria-label="Enter location"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white hover:bg-white/10"
                     onClick={() => {
                       if ("geolocation" in navigator) {
                         navigator.geolocation.getCurrentPosition(
@@ -246,12 +197,10 @@ export default function Home() {
                             setLocationName("");
                             toast.success("Location detected!");
                           },
-                          (error) => {
-                            toast.error("Could not get your location. Please enter manually.");
+                          () => {
+                            toast.error("Could not get your location.");
                           }
                         );
-                      } else {
-                        toast.error("Geolocation is not supported by your browser.");
                       }
                     }}
                   >
@@ -260,9 +209,9 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex flex-col md:flex-row gap-3 items-center">
                 <Select value={category || undefined} onValueChange={setCategory}>
-                  <SelectTrigger className="w-full md:w-48 text-gray-900">
+                  <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white rounded-xl h-11">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
@@ -276,7 +225,7 @@ export default function Home() {
                 </Select>
 
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                  <SelectTrigger className="w-full md:w-48 text-gray-900">
+                  <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white rounded-xl h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -287,7 +236,11 @@ export default function Home() {
                   </SelectContent>
                 </Select>
 
-                <Button onClick={handleSearch} className="w-full md:w-auto h-12 px-8" size="lg">
+                <Button
+                  onClick={handleSearch}
+                  className="w-full md:w-auto h-11 px-8 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-500/30 btn-shimmer font-semibold"
+                  size="lg"
+                >
                   <Search className="w-5 h-5 mr-2" />
                   Search
                 </Button>
@@ -299,57 +252,69 @@ export default function Home() {
 
       {/* Features Section */}
       {!showSearch && (
-        <div className="py-20 bg-white">
-          <div className="container">
+        <div className="py-24 relative overflow-hidden">
+          {/* Subtle background decoration */}
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-100 rounded-full blur-3xl opacity-30 pointer-events-none" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-30 pointer-events-none" />
+
+          <div className="container relative z-10">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              <Badge className="bg-violet-100 text-violet-700 border-violet-200 mb-4 px-4 py-1.5">
                 Why Choose BizBloom?
+              </Badge>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-5 tracking-tight">
+                The platform for<br />
+                <span className="text-gradient">community discovery</span>
               </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                The premier platform for discovering and supporting local businesses in your community
+              <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+                Everything you need to discover, support, and connect with the businesses that make your neighborhood special.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card className="text-center p-8 border-2 hover:border-primary transition-colors">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Users className="w-8 h-8 text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="card-hover text-center p-8 border-0 shadow-lg shadow-violet-100/50 bg-gradient-to-br from-white to-violet-50/50 rounded-2xl group">
+                <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-violet-500/25 group-hover:shadow-violet-500/40 transition-shadow rotate-3 group-hover:rotate-0 transition-transform duration-300">
+                  <Globe className="w-8 h-8 text-white" />
                 </div>
-                <CardHeader>
-                  <CardTitle className="text-2xl mb-3">FIND LOCAL COMMUNITIES</CardTitle>
-                  <CardDescription className="text-base">
-                    Discover hidden gems and connect with businesses that make your neighborhood unique. Support local entrepreneurs and build stronger communities.
+                <CardHeader className="p-0">
+                  <CardTitle className="text-xl mb-3 font-bold">Find Local Communities</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    Discover hidden gems and connect with businesses that make your neighborhood unique. Support local entrepreneurs.
                   </CardDescription>
                 </CardHeader>
               </Card>
 
-              <Card className="text-center p-8 border-2 hover:border-primary transition-colors">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <TrendingUp className="w-8 h-8 text-primary" />
+              <Card className="card-hover text-center p-8 border-0 shadow-lg shadow-indigo-100/50 bg-gradient-to-br from-white to-indigo-50/50 rounded-2xl group">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow -rotate-3 group-hover:rotate-0 transition-transform duration-300">
+                  <Zap className="w-8 h-8 text-white" />
                 </div>
-                <CardHeader>
-                  <CardTitle className="text-2xl mb-3">TRENDING INSIGHTS</CardTitle>
-                  <CardDescription className="text-base">
-                    Stay ahead with real-time trending businesses and personalized recommendations based on your preferences and community activity.
+                <CardHeader className="p-0">
+                  <CardTitle className="text-xl mb-3 font-bold">Trending Insights</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    Stay ahead with real-time trending businesses and personalized recommendations based on community activity.
                   </CardDescription>
                 </CardHeader>
               </Card>
 
-              <Card className="text-center p-8 border-2 hover:border-primary transition-colors">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Award className="w-8 h-8 text-primary" />
+              <Card className="card-hover text-center p-8 border-0 shadow-lg shadow-purple-100/50 bg-gradient-to-br from-white to-purple-50/50 rounded-2xl group">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-500/25 group-hover:shadow-purple-500/40 transition-shadow rotate-3 group-hover:rotate-0 transition-transform duration-300">
+                  <Shield className="w-8 h-8 text-white" />
                 </div>
-                <CardHeader>
-                  <CardTitle className="text-2xl mb-3">TRUSTED REVIEWS</CardTitle>
-                  <CardDescription className="text-base">
-                    Read authentic reviews from real community members. Share your experiences and help others make informed decisions.
+                <CardHeader className="p-0">
+                  <CardTitle className="text-xl mb-3 font-bold">Trusted Reviews</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    Read authentic reviews from real community members. Share your experiences and help others.
                   </CardDescription>
                 </CardHeader>
               </Card>
             </div>
 
-            <div className="text-center mt-12">
-              <Button size="lg" className="px-8 py-6 text-lg" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            <div className="text-center mt-14">
+              <Button
+                size="lg"
+                className="px-10 py-6 text-lg rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-xl shadow-violet-500/25 btn-shimmer font-semibold"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              >
                 Start Exploring Now
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
@@ -364,7 +329,7 @@ export default function Home() {
           {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <Card key={i}>
+                <Card key={i} className="rounded-2xl overflow-hidden">
                   <Skeleton className="h-48 w-full" />
                   <CardHeader>
                     <Skeleton className="h-6 w-3/4" />
@@ -382,18 +347,25 @@ export default function Home() {
           )}
 
           {!isLoading && businesses && businesses.businesses && businesses.businesses.length === 0 && (
-            <div className="text-center py-12">
-              <Search className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <div className="text-center py-16">
+              <div className="w-20 h-20 mx-auto bg-violet-100 rounded-full flex items-center justify-center mb-4">
+                <Search className="w-10 h-10 text-violet-400" />
+              </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">No businesses found</h3>
-              <p className="text-gray-600">Try adjusting your search or location</p>
+              <p className="text-gray-500">Try adjusting your search or location</p>
             </div>
           )}
 
           {!isLoading && businesses && businesses.businesses && businesses.businesses.length > 0 && (
             <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Found {businesses.businesses.length} {businesses.businesses.length === 1 ? "business" : "businesses"}
-              </h2>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                  <Search className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Found {businesses.businesses.length} {businesses.businesses.length === 1 ? "business" : "businesses"}
+                </h2>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {businesses.businesses.map((business: any) => (
                   <BusinessCard
@@ -481,45 +453,50 @@ function BusinessCard({
   };
 
   return (
-    <Card className="cursor-pointer hover:shadow-xl transition-shadow overflow-hidden" onClick={onClick}>
-      <div className="relative">
+    <Card className="card-hover cursor-pointer overflow-hidden rounded-2xl border-0 shadow-md group" onClick={onClick}>
+      <div className="relative overflow-hidden">
         <img
           src={business.image_url || "/placeholder-business.jpg"}
           alt={business.name}
-          className="w-full h-48 object-cover"
+          className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         {isAuthenticated && (
           <Button
             variant="secondary"
             size="icon"
-            className={`absolute top-2 right-2 ${isFavorited ? "bg-red-500 hover:bg-red-600" : "bg-white"}`}
+            className={`absolute top-3 right-3 rounded-full shadow-lg transition-all ${
+              isFavorited
+                ? "bg-gradient-to-br from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 border-0"
+                : "bg-white/90 hover:bg-white backdrop-blur-sm"
+            }`}
             onClick={handleFavoriteClick}
           >
-            <Heart className={`h-5 w-5 ${isFavorited ? "fill-white text-white" : "text-gray-700"}`} />
+            <Heart className={`h-4 w-4 ${isFavorited ? "fill-white text-white" : "text-gray-700"}`} />
           </Button>
         )}
       </div>
 
       <CardHeader>
-        <CardTitle className="line-clamp-1">{business.name}</CardTitle>
+        <CardTitle className="line-clamp-1 text-lg">{business.name}</CardTitle>
         <CardDescription className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="flex items-center">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span className="ml-1 font-semibold text-gray-900">{business.rating.toFixed(1)}</span>
+            <div className="flex items-center bg-amber-50 px-2 py-0.5 rounded-lg">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span className="ml-1 font-bold text-amber-700 text-sm">{business.rating.toFixed(1)}</span>
             </div>
-            <span className="text-gray-500">({business.review_count} reviews)</span>
-            {business.price && <span className="font-semibold text-green-600">{business.price}</span>}
+            <span className="text-gray-400 text-sm">({business.review_count})</span>
+            {business.price && <span className="font-semibold text-emerald-600 text-sm">{business.price}</span>}
           </div>
           {userLocation && business.coordinates && (
-            <div className="flex items-center gap-1 text-sm text-gray-600">
+            <div className="flex items-center gap-1 text-sm text-gray-500">
               <MapPin className="w-3 h-3" />
               <span>{calculateDistance(userLocation.lat, userLocation.lng, business.coordinates.latitude, business.coordinates.longitude).toFixed(1)} mi away</span>
             </div>
           )}
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {business.categories.slice(0, 2).map((cat) => (
-              <Badge key={cat.alias} variant="secondary" className="text-xs">
+              <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-50 text-violet-700 border-violet-100">
                 {cat.title}
               </Badge>
             ))}
@@ -527,8 +504,8 @@ function BusinessCard({
         </CardDescription>
       </CardHeader>
 
-      <CardFooter className="text-sm text-gray-600">
-        <MapPin className="w-4 h-4 mr-1" />
+      <CardFooter className="text-sm text-gray-500 pt-0">
+        <MapPin className="w-3.5 h-3.5 mr-1.5 text-violet-400" />
         <span className="line-clamp-1">
           {business.location.address1}, {business.location.city}, {business.location.state}
         </span>
@@ -599,14 +576,14 @@ function BusinessDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl">
         {isLoading ? (
           <>
             <DialogHeader className="sr-only">
               <DialogTitle>Loading Business Details</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full rounded-xl" />
               <Skeleton className="h-8 w-3/4" />
               <Skeleton className="h-20 w-full" />
             </div>
@@ -618,24 +595,27 @@ function BusinessDetailsDialog({
             </DialogHeader>
             <div className="text-center py-8">
               <p className="text-red-600">Unable to load business details. This business may no longer be available.</p>
-              <Button onClick={onClose} className="mt-4">Close</Button>
+              <Button onClick={onClose} className="mt-4 rounded-xl">Close</Button>
             </div>
           </>
         ) : details ? (
           <>
             <DialogHeader>
-              <img
-                src={details.image_url || "/placeholder-business.jpg"}
-                alt={details.name}
-                className="w-full h-64 object-cover rounded-md mb-4"
-              />
-              <DialogTitle className="text-3xl">{details.name}</DialogTitle>
+              <div className="relative rounded-xl overflow-hidden">
+                <img
+                  src={details.image_url || "/placeholder-business.jpg"}
+                  alt={details.name}
+                  className="w-full h-64 object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              </div>
+              <DialogTitle className="text-3xl mt-4 font-bold">{details.name}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center">
-                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span className="ml-1 text-lg font-semibold text-gray-900">
+                  <div className="flex items-center bg-amber-50 px-3 py-1 rounded-xl">
+                    <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                    <span className="ml-1.5 text-lg font-bold text-amber-700">
                       {details.rating.toFixed(1)}
                     </span>
                   </div>
@@ -644,41 +624,41 @@ function BusinessDetailsDialog({
                       const reviewsSection = document.getElementById("reviews-section");
                       reviewsSection?.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    className="text-violet-600 hover:text-violet-800 hover:underline cursor-pointer font-medium"
                   >
                     ({details.review_count} reviews)
                   </button>
-                  {details.price && <span className="text-lg font-semibold text-green-600">{details.price}</span>}
+                  {details.price && <span className="text-lg font-semibold text-emerald-600">{details.price}</span>}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   {details.categories.map((cat: any) => (
-                    <Badge key={cat.alias} variant="secondary">
+                    <Badge key={cat.alias} className="bg-violet-100 text-violet-700 rounded-lg border-violet-200">
                       {cat.title}
                     </Badge>
                   ))}
                 </div>
 
-                <div className="space-y-2 text-gray-700">
+                <div className="space-y-2 text-gray-600">
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-5 h-5 mt-0.5" />
+                    <MapPin className="w-5 h-5 mt-0.5 text-violet-400" />
                     <span>{details.location.display_address?.join(", ")}</span>
                   </div>
                   {details.phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="w-5 h-5" />
+                      <Phone className="w-5 h-5 text-violet-400" />
                       <span>{details.phone}</span>
                     </div>
                   )}
                 </div>
 
                 {details.hours && details.hours[0] && (
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h4 className="font-semibold text-gray-900 mb-2">Hours</h4>
+                  <div className="bg-violet-50/50 p-4 rounded-xl border border-violet-100">
+                    <h4 className="font-bold text-gray-900 mb-2">Hours</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {details.hours[0].open.map((hour: any, index: number) => (
                         <div key={index}>
-                          <span className="font-medium">
+                          <span className="font-medium text-violet-700">
                             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][hour.day]}:
                           </span>{" "}
                           {hour.start.slice(0, 2)}:{hour.start.slice(2)} - {hour.end.slice(0, 2)}:
@@ -690,14 +670,16 @@ function BusinessDetailsDialog({
                 )}
 
                 <div className="flex gap-3">
-                  <Button asChild className="flex-1">
-                    <a href={details.url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      View on Yelp
-                    </a>
-                  </Button>
+                  {details.url && (
+                    <Button asChild className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500">
+                      <a href={details.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View on Yelp
+                      </a>
+                    </Button>
+                  )}
                   {isAuthenticated && !myReview && (
-                    <Button onClick={() => setShowReviewDialog(true)} className="flex-1">
+                    <Button onClick={() => setShowReviewDialog(true)} className="flex-1 rounded-xl" variant="outline">
                       Write a Review
                     </Button>
                   )}
@@ -705,7 +687,7 @@ function BusinessDetailsDialog({
 
                 {/* Review Dialog */}
                 <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-                  <DialogContent>
+                  <DialogContent className="rounded-2xl">
                     <DialogHeader>
                       <DialogTitle>Write a Review</DialogTitle>
                       <DialogDescription>Share your experience at {details.name}</DialogDescription>
@@ -718,11 +700,12 @@ function BusinessDetailsDialog({
                             <button
                               key={star}
                               onClick={() => setRating(star)}
-                              className="focus:outline-none"
+                              className="focus:outline-none transition-transform hover:scale-110"
+                              aria-label={`Rate ${star} out of 5 stars`}
                             >
                               <Star
                                 className={`w-8 h-8 ${
-                                  star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                  star <= rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
                                 }`}
                               />
                             </button>
@@ -734,15 +717,17 @@ function BusinessDetailsDialog({
                         <textarea
                           placeholder="Tell us about your experience..."
                           value={comment}
-                          onChange={(e) => setComment(e.target.value)}
+                          onChange={(e) => setComment(e.target.value.slice(0, 5000))}
                           rows={5}
-                          className="w-full px-3 py-2 border rounded-md"
+                          maxLength={5000}
+                          className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-violet-400 focus:border-violet-400 outline-none"
                         />
+                        <p className="text-xs text-gray-500 text-right">{comment.length}/5000</p>
                       </div>
                       <Button
                         onClick={handleSubmitReview}
                         disabled={createReview.isPending}
-                        className="w-full"
+                        className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600"
                       >
                         {createReview.isPending ? "Submitting..." : "Submit Review"}
                       </Button>
@@ -753,24 +738,24 @@ function BusinessDetailsDialog({
                 {/* Community Reviews */}
                 {userReviews && userReviews.length > 0 && (
                   <div id="reviews-section" className="mt-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Community Reviews</h4>
+                    <h4 className="text-lg font-bold text-gray-900 mb-3">Community Reviews</h4>
                     <div className="space-y-3">
                       {userReviews.map((review: any) => (
-                        <div key={review.id} className="bg-gray-50 p-4 rounded-md">
+                        <div key={review.id} className="bg-violet-50/50 p-4 rounded-xl border border-violet-100">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="flex items-center">
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
                                   className={`w-4 h-4 ${
-                                    i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                    i < review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
                                   }`}
                                 />
                               ))}
                             </div>
-                            <span className="font-medium text-gray-900">{review.userName}</span>
+                            <span className="font-semibold text-gray-900">{review.userName}</span>
                           </div>
-                          {review.comment && <p className="text-gray-700">{review.comment}</p>}
+                          {review.comment && <p className="text-gray-600">{review.comment}</p>}
                         </div>
                       ))}
                     </div>

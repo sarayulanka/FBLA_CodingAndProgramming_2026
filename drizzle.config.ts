@@ -5,11 +5,14 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is required to run drizzle commands");
 }
 
+const isRemote = connectionString.startsWith("libsql://") || connectionString.startsWith("https://");
+
 export default defineConfig({
   schema: "./drizzle/schema.ts",
   out: "./drizzle",
-  dialect: "mysql",
+  dialect: "turso",
   dbCredentials: {
-    url: connectionString,
+    url: isRemote ? connectionString : (connectionString.startsWith("file:") ? connectionString : `file:${connectionString}`),
+    authToken: isRemote ? process.env.DATABASE_AUTH_TOKEN : undefined,
   },
 });

@@ -1,5 +1,7 @@
+// For best practices slide
 import { eq, and, desc, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
 import {
   InsertUser, users,
   businesses, InsertBusiness, Business,
@@ -13,6 +15,8 @@ import {
   userStats, InsertUserStats, UserStats
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import path from "path";
+import fs from "fs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -20,7 +24,20 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const dbPath = process.env.DATABASE_URL;
+      const isRemote = dbPath.startsWith("libsql://") || dbPath.startsWith("https://");
+      if (!isRemote) {
+        const dir = path.dirname(dbPath);
+        if (dir && !fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      }
+      const url = isRemote ? dbPath : `file:${dbPath}`;
+      const client = createClient({
+        url,
+        authToken: isRemote ? process.env.DATABASE_AUTH_TOKEN : undefined,
+      });
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -79,7 +96,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -106,7 +124,8 @@ export async function upsertBusiness(business: InsertBusiness): Promise<Business
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(businesses).values(business).onDuplicateKeyUpdate({
+  await db.insert(businesses).values(business).onConflictDoUpdate({
+    target: businesses.yelpId,
     set: {
       name: business.name,
       imageUrl: business.imageUrl,
@@ -315,9 +334,9 @@ export async function getRecommendationsForUser(userId: number): Promise<Busines
   const db = await getDb();
   if (!db) return [];
 
-  // Get user's favorite categories
+  // Get user's favorite categories and business IDs in one query
   const userFavorites = await db
-    .select({ categories: businesses.categories })
+    .select({ categories: businesses.categories, businessId: favorites.businessId })
     .from(favorites)
     .innerJoin(businesses, eq(favorites.businessId, businesses.id))
     .where(eq(favorites.userId, userId));
@@ -331,9 +350,11 @@ export async function getRecommendationsForUser(userId: number): Promise<Busines
       .limit(10);
   }
 
-  // Extract category aliases from user's favorites
+  // Extract category aliases and favorited business IDs from the same query
   const categoryAliases = new Set<string>();
+  const favoritedIdSet = new Set<number>();
   userFavorites.forEach(fav => {
+    if (fav.businessId) favoritedIdSet.add(fav.businessId);
     if (fav.categories) {
       try {
         const cats = JSON.parse(fav.categories);
@@ -341,14 +362,6 @@ export async function getRecommendationsForUser(userId: number): Promise<Busines
       } catch {}
     }
   });
-
-  // Get businesses in similar categories that user hasn't favorited
-  const favoritedIds = await db
-    .select({ id: favorites.businessId })
-    .from(favorites)
-    .where(eq(favorites.userId, userId));
-
-  const favoritedIdSet = new Set(favoritedIds.map(f => f.id));
 
   const allBusinesses = await db.select().from(businesses).orderBy(desc(businesses.rating)).limit(50);
 
@@ -465,7 +478,7 @@ export async function getUserStats(userId: number): Promise<UserStats> {
   if (!db) throw new Error("Database not available");
 
   const existing = await db.select().from(userStats).where(eq(userStats.userId, userId)).limit(1);
-  
+
   if (existing.length > 0) {
     return existing[0];
   }
@@ -480,12 +493,10 @@ export async function getUserStats(userId: number): Promise<UserStats> {
  * Update user stats and check for badge unlocks
  */
 export async function updateUserStats(userId: number, type: 'review' | 'visit' | 'favorite'): Promise<Badge[]> {
-  console.log(`[updateUserStats] Called with userId=${userId}, type=${type}`);
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const stats = await getUserStats(userId);
-  console.log(`[updateUserStats] Current stats:`, stats);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -495,7 +506,7 @@ export async function updateUserStats(userId: number, type: 'review' | 'visit' |
     const lastActivity = new Date(stats.lastActivityDate);
     lastActivity.setHours(0, 0, 0, 0);
     const daysDiff = Math.floor((today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysDiff === 1) {
       newStreak = stats.currentStreak + 1;
     } else if (daysDiff > 1) {
@@ -516,9 +527,7 @@ export async function updateUserStats(userId: number, type: 'review' | 'visit' |
   if (type === 'visit') updates.totalVisits = stats.totalVisits + 1;
   if (type === 'favorite') updates.totalFavorites = stats.totalFavorites + 1;
 
-  console.log(`[updateUserStats] Updating with:`, updates);
   await db.update(userStats).set(updates).where(eq(userStats.userId, userId));
-  console.log(`[updateUserStats] Update complete`);
 
   // Check for new badges
   const newBadges: Badge[] = [];
@@ -766,7 +775,7 @@ export async function regenerateWeeklyChallenges(): Promise<void> {
   if (!db) throw new Error("Database not available");
 
   const now = new Date();
-  
+
   // Check if any active challenges have expired
   const activeChallenges = await db
     .select()
@@ -788,7 +797,7 @@ export async function regenerateWeeklyChallenges(): Promise<void> {
   // Calculate new week dates
   const weekStart = new Date(now);
   weekStart.setHours(0, 0, 0, 0);
-  
+
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
@@ -871,5 +880,93 @@ export async function regenerateWeeklyChallenges(): Promise<void> {
     await db.insert(challenges).values(challenge);
   }
 
-  console.log(`[Challenge Regeneration] Created ${selectedChallenges.length} new challenges`);
+}
+
+// ==================== ANALYTICS FUNCTIONS ====================
+
+function getDateRangeStart(range: "7d" | "30d" | "all"): Date | null {
+  if (range === "all") return null;
+  const d = new Date();
+  d.setDate(d.getDate() - (range === "7d" ? 7 : 30));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export async function getAnalyticsSummary(dateRange: "7d" | "30d" | "all") {
+  const db = await getDb();
+  if (!db) return { totalReviews: 0, totalBusinesses: 0, totalFavorites: 0, avgRating: 0 };
+
+  const start = getDateRangeStart(dateRange);
+
+  const reviewCount = start
+    ? await db.select({ count: sql<number>`COUNT(*)` }).from(reviews).where(sql`${reviews.createdAt} >= ${start}`)
+    : await db.select({ count: sql<number>`COUNT(*)` }).from(reviews);
+
+  const favCount = start
+    ? await db.select({ count: sql<number>`COUNT(*)` }).from(favorites).where(sql`${favorites.createdAt} >= ${start}`)
+    : await db.select({ count: sql<number>`COUNT(*)` }).from(favorites);
+
+  const bizCount = await db.select({ count: sql<number>`COUNT(*)` }).from(businesses);
+
+  const avgRating = start
+    ? await db.select({ avg: sql<number>`COALESCE(AVG(${reviews.rating}), 0)` }).from(reviews).where(sql`${reviews.createdAt} >= ${start}`)
+    : await db.select({ avg: sql<number>`COALESCE(AVG(${reviews.rating}), 0)` }).from(reviews);
+
+  return {
+    totalReviews: reviewCount[0]?.count ?? 0,
+    totalBusinesses: bizCount[0]?.count ?? 0,
+    totalFavorites: favCount[0]?.count ?? 0,
+    avgRating: Number((avgRating[0]?.avg ?? 0).toFixed(1)),
+  };
+}
+
+export async function getReviewsByDateRange(dateRange: "7d" | "30d" | "all") {
+  const db = await getDb();
+  if (!db) return [];
+
+  const start = getDateRangeStart(dateRange);
+
+  const query = start
+    ? db.select({
+        date: sql<string>`DATE(${reviews.createdAt} / 1000, 'unixepoch')`,
+        count: sql<number>`COUNT(*)`,
+      }).from(reviews).where(sql`${reviews.createdAt} >= ${start}`).groupBy(sql`DATE(${reviews.createdAt} / 1000, 'unixepoch')`).orderBy(sql`DATE(${reviews.createdAt} / 1000, 'unixepoch')`)
+    : db.select({
+        date: sql<string>`DATE(${reviews.createdAt} / 1000, 'unixepoch')`,
+        count: sql<number>`COUNT(*)`,
+      }).from(reviews).groupBy(sql`DATE(${reviews.createdAt} / 1000, 'unixepoch')`).orderBy(sql`DATE(${reviews.createdAt} / 1000, 'unixepoch')`);
+
+  return await query;
+}
+
+export async function getFavoritesByCategory() {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select({
+      categories: businesses.categories,
+      count: sql<number>`COUNT(${favorites.id})`,
+    })
+    .from(favorites)
+    .innerJoin(businesses, eq(favorites.businessId, businesses.id))
+    .groupBy(businesses.categories);
+
+  // Parse categories and aggregate by first category title
+  const categoryMap = new Map<string, number>();
+  for (const row of result) {
+    if (!row.categories) continue;
+    try {
+      const cats = JSON.parse(row.categories);
+      const name = cats[0]?.title || "Other";
+      categoryMap.set(name, (categoryMap.get(name) || 0) + row.count);
+    } catch {
+      categoryMap.set("Other", (categoryMap.get("Other") || 0) + row.count);
+    }
+  }
+
+  return Array.from(categoryMap.entries())
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
 }

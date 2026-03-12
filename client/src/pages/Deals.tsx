@@ -2,32 +2,25 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { Tag, MapPin, Calendar, Sparkles, ArrowLeft } from "lucide-react";
-import { useLocation } from "wouter";
+import { Tag, MapPin, Calendar, Sparkles } from "lucide-react";
 
 export default function Deals() {
-  const [, setLocation] = useLocation();
   const { data: deals, isLoading } = trpc.deals.list.useQuery({});
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* Header */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12">
-        <div className="container">
-          <button
-            onClick={() => setLocation("/")}
-            className="flex items-center gap-2 text-gray-300 hover:text-white mb-4 transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Home
-          </button>
-          <div className="flex items-center gap-3 mb-2">
-            <Sparkles className="w-10 h-10" />
-            <h1 className="text-4xl font-bold">Special Deals</h1>
+      <div className="page-header-purple text-white py-14">
+        <div className="container relative z-10">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-extrabold tracking-tight">Special Deals</h1>
+              <p className="text-violet-200 mt-1">Exclusive offers from local businesses</p>
+            </div>
           </div>
-          <p className="text-gray-300">
-            Exclusive offers from local businesses
-          </p>
         </div>
       </div>
 
@@ -36,7 +29,7 @@ export default function Deals() {
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <Card key={i}>
+              <Card key={i} className="rounded-2xl">
                 <CardHeader>
                   <Skeleton className="h-6 w-3/4" />
                   <Skeleton className="h-4 w-full mt-2" />
@@ -48,14 +41,12 @@ export default function Deals() {
         )}
 
         {!isLoading && deals && deals.length === 0 && (
-          <div className="text-center py-12">
-            <Tag className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              No deals available yet
-            </h3>
-            <p className="text-gray-600">
-              Check back soon for exclusive offers from local businesses!
-            </p>
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+              <Tag className="w-10 h-10 text-emerald-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No deals available yet</h3>
+            <p className="text-gray-500">Check back soon for exclusive offers from local businesses!</p>
           </div>
         )}
 
@@ -75,46 +66,48 @@ function DealCard({ deal }: { deal: any }) {
   const categories = deal.business?.categories ? JSON.parse(deal.business.categories) : [];
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-shadow border-2 border-green-200 bg-gradient-to-br from-green-50 to-white">
+    <Card className="card-hover overflow-hidden rounded-2xl border-0 shadow-md bg-gradient-to-br from-white to-emerald-50/50">
       <CardHeader>
-        <div className="flex items-start justify-between mb-2">
-          <Badge className="bg-green-600">Special Offer</Badge>
+        <div className="flex items-start justify-between mb-3">
+          <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 border-0 text-white rounded-lg px-3 py-1 font-semibold shadow-lg shadow-emerald-500/20">
+            Special Offer
+          </Badge>
           {deal.expiresAt && (
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
               <Calendar className="w-3 h-3 mr-1" />
               Expires {new Date(deal.expiresAt).toLocaleDateString()}
             </div>
           )}
         </div>
 
-        <CardTitle className="text-xl">{deal.title}</CardTitle>
+        <CardTitle className="text-xl font-bold">{deal.title}</CardTitle>
 
         {deal.description && (
-          <CardDescription className="text-base">
+          <CardDescription className="text-base leading-relaxed">
             {deal.description}
           </CardDescription>
         )}
 
         {deal.code && (
-          <div className="mt-3 p-3 bg-white border-2 border-dashed border-green-400 rounded-md">
-            <p className="text-xs text-gray-600 mb-1">Promo Code:</p>
-            <p className="text-lg font-bold text-green-700 font-mono">{deal.code}</p>
+          <div className="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300 rounded-xl">
+            <p className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wider">Promo Code</p>
+            <p className="text-xl font-extrabold text-emerald-700 font-mono tracking-wider">{deal.code}</p>
           </div>
         )}
 
         {deal.business && (
-          <div className="mt-4 pt-4 border-t space-y-2">
-            <p className="font-semibold text-gray-900">{deal.business.name}</p>
-            <div className="flex items-start gap-1 text-sm text-gray-600">
-              <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
+            <p className="font-bold text-gray-900">{deal.business.name}</p>
+            <div className="flex items-start gap-1.5 text-sm text-gray-500">
+              <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-400" />
               <span>
                 {deal.business.address}, {deal.business.city}, {deal.business.state}
               </span>
             </div>
             {categories.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {categories.slice(0, 2).map((cat: any) => (
-                  <Badge key={cat.alias} variant="secondary" className="text-xs">
+                  <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-50 text-violet-700 border-violet-100">
                     {cat.title}
                   </Badge>
                 ))}

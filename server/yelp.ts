@@ -1,14 +1,31 @@
 /**
- * Yelp Fusion API integration
+ * Yelp Fusion API integration with local fallback.
+ *
+ * When the Yelp API is reachable the live data is returned as-is.
+ * When the API key is missing, the network is down, or any request fails,
+ * every function transparently falls back to a local seed database so the
+ * application keeps working fully offline.
+ *
  * Docs: https://docs.developer.yelp.com/docs/places-intro
  */
 
+import {
+  fallbackSearch,
+  fallbackGetDetails,
+  fallbackGetReviews,
+  fallbackAutocomplete,
+} from "./fallback-data";
+
+// ===== Configuration =====
+
 const YELP_API_BASE = "https://api.yelp.com/v3";
-const YELP_API_KEY = process.env.YELP_API_KEY || 'bPaQv14J0dOcg62aGElD5-TVf4GR1r3nNHIDI9tnUyMELdDdMupkB3TO72KYFCBhgsNOKu4i5M52IKCbJm5YDj5j7SlR-vyiaur88v3dD9sygKuFzU_wULXCHHMaaXYx';
+const YELP_API_KEY = process.env.YELP_API_KEY || "";
 
 if (!YELP_API_KEY) {
-  console.warn("[Yelp API] YELP_API_KEY not configured");
+  console.warn("[Yelp API] YELP_API_KEY not configured — using local fallback data");
 }
+
+// ===== Shared types =====
 
 export interface YelpBusiness {
   id: string;
@@ -89,8 +106,40 @@ export interface YelpReviewsResponse {
   possible_languages: string[];
 }
 
+// ===== Internal helpers =====
+
+async function yelpFetch<T>(path: string): Promise<T> {
+  if (!YELP_API_KEY) {
+    throw new Error("YELP_API_KEY not configured");
+  }
+
+  const response = await fetch(`${YELP_API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${YELP_API_KEY}` },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Yelp API error: ${response.status} - ${body}`);
+  }
+
+  return response.json();
+}
+
+function buildSearchQuery(params: Record<string, unknown>): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      qs.append(key, String(value));
+    }
+  }
+  return qs.toString();
+}
+
+// ===== Public API =====
+
 /**
- * Search for businesses
+ * Search for businesses.
+ * Falls back to local seed data when the Yelp API is unavailable.
  */
 export async function searchBusinesses(params: {
   location?: string;
@@ -105,84 +154,49 @@ export async function searchBusinesses(params: {
   limit?: number;
   offset?: number;
 }): Promise<YelpSearchResponse> {
-  if (!YELP_API_KEY) {
-    throw new Error("YELP_API_KEY not configured");
+  try {
+    return await yelpFetch<YelpSearchResponse>(
+      `/businesses/search?${buildSearchQuery(params)}`
+    );
+  } catch (error) {
+    console.warn("[Yelp API] searchBusinesses failed, using fallback:", (error as Error).message);
+    return fallbackSearch(params);
   }
-
-  const queryParams = new URLSearchParams();
-  
-  if (params.location) queryParams.append("location", params.location);
-  if (params.latitude !== undefined) queryParams.append("latitude", params.latitude.toString());
-  if (params.longitude !== undefined) queryParams.append("longitude", params.longitude.toString());
-  if (params.term) queryParams.append("term", params.term);
-  if (params.categories) queryParams.append("categories", params.categories);
-  if (params.radius) queryParams.append("radius", params.radius.toString());
-  if (params.price) queryParams.append("price", params.price);
-  if (params.open_now !== undefined) queryParams.append("open_now", params.open_now.toString());
-  if (params.sort_by) queryParams.append("sort_by", params.sort_by);
-  if (params.limit) queryParams.append("limit", params.limit.toString());
-  if (params.offset) queryParams.append("offset", params.offset.toString());
-
-  const response = await fetch(`${YELP_API_BASE}/businesses/search?${queryParams}`, {
-    headers: {
-      Authorization: `Bearer ${YELP_API_KEY}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Yelp API error: ${response.status} - ${error}`);
-  }
-
-  return response.json();
 }
 
 /**
- * Get business details by Yelp ID
+ * Get business details by Yelp ID.
+ * Falls back to local seed data when the Yelp API is unavailable.
  */
 export async function getBusinessDetails(yelpId: string): Promise<YelpBusinessDetails> {
-  if (!YELP_API_KEY) {
-    throw new Error("YELP_API_KEY not configured");
+  try {
+    return await yelpFetch<YelpBusinessDetails>(`/businesses/${yelpId}`);
+  } catch (error) {
+    console.warn("[Yelp API] getBusinessDetails failed, using fallback:", (error as Error).message);
+    const details = fallbackGetDetails(yelpId);
+    if (!details) {
+      throw new Error(`Business not found: ${yelpId}`);
+    }
+    return details;
   }
-
-  const response = await fetch(`${YELP_API_BASE}/businesses/${yelpId}`, {
-    headers: {
-      Authorization: `Bearer ${YELP_API_KEY}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Yelp API error: ${response.status} - ${error}`);
-  }
-
-  return response.json();
 }
 
 /**
- * Get reviews for a business
+ * Get reviews for a business.
+ * Falls back to locally-generated reviews when the Yelp API is unavailable.
  */
 export async function getBusinessReviews(yelpId: string): Promise<YelpReviewsResponse> {
-  if (!YELP_API_KEY) {
-    throw new Error("YELP_API_KEY not configured");
+  try {
+    return await yelpFetch<YelpReviewsResponse>(`/businesses/${yelpId}/reviews`);
+  } catch (error) {
+    console.warn("[Yelp API] getBusinessReviews failed, using fallback:", (error as Error).message);
+    return fallbackGetReviews(yelpId);
   }
-
-  const response = await fetch(`${YELP_API_BASE}/businesses/${yelpId}/reviews`, {
-    headers: {
-      Authorization: `Bearer ${YELP_API_KEY}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Yelp API error: ${response.status} - ${error}`);
-  }
-
-  return response.json();
 }
 
 /**
- * Autocomplete suggestions
+ * Autocomplete suggestions.
+ * Falls back to local seed data when the Yelp API is unavailable.
  */
 export async function autocomplete(params: {
   text: string;
@@ -193,25 +207,10 @@ export async function autocomplete(params: {
   businesses: Array<{ id: string; name: string }>;
   categories: Array<{ alias: string; title: string }>;
 }> {
-  if (!YELP_API_KEY) {
-    throw new Error("YELP_API_KEY not configured");
+  try {
+    return await yelpFetch(`/autocomplete?${buildSearchQuery(params)}`);
+  } catch (error) {
+    console.warn("[Yelp API] autocomplete failed, using fallback:", (error as Error).message);
+    return fallbackAutocomplete(params);
   }
-
-  const queryParams = new URLSearchParams();
-  queryParams.append("text", params.text);
-  if (params.latitude !== undefined) queryParams.append("latitude", params.latitude.toString());
-  if (params.longitude !== undefined) queryParams.append("longitude", params.longitude.toString());
-
-  const response = await fetch(`${YELP_API_BASE}/autocomplete?${queryParams}`, {
-    headers: {
-      Authorization: `Bearer ${YELP_API_KEY}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Yelp API error: ${response.status} - ${error}`);
-  }
-
-  return response.json();
 }

@@ -1,6 +1,9 @@
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
 import { badges, challenges, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import path from "path";
+import fs from "fs";
 
 async function seedGamification() {
   if (!process.env.DATABASE_URL) {
@@ -8,7 +11,20 @@ async function seedGamification() {
     process.exit(1);
   }
 
-  const db = drizzle(process.env.DATABASE_URL);
+  const dbPath = process.env.DATABASE_URL;
+  const isRemote = dbPath.startsWith("libsql://") || dbPath.startsWith("https://");
+  if (!isRemote) {
+    const dir = path.dirname(dbPath);
+    if (dir && !fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+  const url = isRemote ? dbPath : `file:${dbPath}`;
+  const client = createClient({
+    url,
+    authToken: isRemote ? process.env.DATABASE_AUTH_TOKEN : undefined,
+  });
+  const db = drizzle(client);
 
   // Create demo user for localhost testing
   console.log("Creating demo user...");
@@ -31,7 +47,7 @@ async function seedGamification() {
   }
 
   console.log("Seeding badges...");
-  
+
   // Seed badges
   const badgeData = [
     {
@@ -87,7 +103,7 @@ async function seedGamification() {
       name: "Streak Master",
       description: "Maintain a 7-day activity streak",
       icon: "🔥",
-      category: "streak",
+      category: "challenges",
       requirement: 7,
     },
   ] as any;
@@ -106,47 +122,52 @@ async function seedGamification() {
     {
       title: "Bakery Explorer",
       description: "Visit 3 different bakeries this week",
+      type: "category",
+      target: 3,
       category: "bakeries",
-      targetCount: 3,
-      rewardPoints: 50,
       startsAt: new Date(),
       endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      isActive: true,
     },
     {
       title: "Coffee Connoisseur",
       description: "Try 3 different coffee shops",
+      type: "category",
+      target: 3,
       category: "coffee",
-      targetCount: 3,
-      rewardPoints: 50,
       startsAt: new Date(),
       endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      isActive: true,
     },
     {
       title: "Foodie Adventure",
       description: "Try 5 different restaurants",
+      type: "category",
+      target: 5,
       category: "restaurants",
-      targetCount: 5,
-      rewardPoints: 100,
       startsAt: new Date(),
       endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      isActive: true,
     },
     {
       title: "Review Streak",
       description: "Write 3 reviews this week",
-      category: "reviews",
-      targetCount: 3,
-      rewardPoints: 75,
+      type: "review",
+      target: 3,
+      category: null,
       startsAt: new Date(),
       endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      isActive: true,
     },
     {
       title: "Local Support",
       description: "Visit 2 minority or student-owned businesses",
+      type: "visit",
+      target: 2,
       category: "support",
-      targetCount: 2,
-      rewardPoints: 100,
       startsAt: new Date(),
       endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      isActive: true,
     },
   ] as any;
 

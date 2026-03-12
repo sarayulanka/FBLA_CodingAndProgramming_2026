@@ -1,18 +1,18 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal, index } from "drizzle-orm/mysql-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 /**
  * Core user table backing auth flow.
  */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  openId: text("openId").notNull().unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  email: text("email"),
+  loginMethod: text("loginMethod"),
+  role: text("role", { enum: ["user", "admin"] }).default("user").notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
+  lastSignedIn: integer("lastSignedIn", { mode: "timestamp" }).defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -21,27 +21,27 @@ export type InsertUser = typeof users.$inferInsert;
 /**
  * Businesses table - caches Yelp business data
  */
-export const businesses = mysqlTable("businesses", {
-  id: int("id").autoincrement().primaryKey(),
-  yelpId: varchar("yelpId", { length: 255 }).notNull().unique(),
+export const businesses = sqliteTable("businesses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  yelpId: text("yelpId").notNull().unique(),
   name: text("name").notNull(),
   imageUrl: text("imageUrl"),
   url: text("url"),
-  rating: int("rating").notNull(), // Store as integer (e.g., 45 for 4.5) to avoid decimal
-  reviewCount: int("reviewCount").notNull().default(0),
-  price: varchar("price", { length: 10 }),
-  phone: varchar("phone", { length: 50 }),
+  rating: integer("rating").notNull(), // Store as integer (e.g., 45 for 4.5) to avoid decimal
+  reviewCount: integer("reviewCount").notNull().default(0),
+  price: text("price"),
+  phone: text("phone"),
   categories: text("categories"), // JSON string of categories
   address: text("address"),
-  city: varchar("city", { length: 255 }),
-  state: varchar("state", { length: 50 }),
-  zipCode: varchar("zipCode", { length: 20 }),
-  country: varchar("country", { length: 50 }),
-  latitude: int("latitude"), // Store as integer (multiply by 1000000)
-  longitude: int("longitude"), // Store as integer (multiply by 1000000)
-  isClosed: boolean("isClosed").default(false),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zipCode"),
+  country: text("country"),
+  latitude: integer("latitude"), // Store as integer (multiply by 1000000)
+  longitude: integer("longitude"), // Store as integer (multiply by 1000000)
+  isClosed: integer("isClosed", { mode: "boolean" }).default(false),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
   yelpIdIdx: index("yelpId_idx").on(table.yelpId),
 }));
@@ -52,11 +52,11 @@ export type InsertBusiness = typeof businesses.$inferInsert;
 /**
  * Favorites table - user bookmarked businesses
  */
-export const favorites = mysqlTable("favorites", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  businessId: int("businessId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+export const favorites = sqliteTable("favorites", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  businessId: integer("businessId").notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
   userBusinessIdx: index("user_business_idx").on(table.userId, table.businessId),
 }));
@@ -67,14 +67,14 @@ export type InsertFavorite = typeof favorites.$inferInsert;
 /**
  * Reviews table - user reviews for businesses
  */
-export const reviews = mysqlTable("reviews", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  businessId: int("businessId").notNull(),
-  rating: int("rating").notNull(), // 1-5 stars
+export const reviews = sqliteTable("reviews", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  businessId: integer("businessId").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
   comment: text("comment"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
   businessIdx: index("business_idx").on(table.businessId),
   userIdx: index("user_idx").on(table.userId),
@@ -86,19 +86,19 @@ export type InsertReview = typeof reviews.$inferInsert;
 /**
  * Deals table - special offers and coupons for businesses
  */
-export const deals = mysqlTable("deals", {
-  id: int("id").autoincrement().primaryKey(),
-  businessId: int("businessId").notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
+export const deals = sqliteTable("deals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  businessId: integer("businessId").notNull(),
+  title: text("title").notNull(),
   description: text("description"),
-  code: varchar("code", { length: 100 }),
-  expiresAt: timestamp("expiresAt"),
-  isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  code: text("code"),
+  expiresAt: integer("expiresAt", { mode: "timestamp" }),
+  isActive: integer("isActive", { mode: "boolean" }).default(true).notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
-  businessIdx: index("business_idx").on(table.businessId),
-  activeIdx: index("active_idx").on(table.isActive),
+  businessIdx: index("deals_business_idx").on(table.businessId),
+  activeIdx: index("deals_active_idx").on(table.isActive),
 }));
 
 export type Deal = typeof deals.$inferSelect;
@@ -107,14 +107,14 @@ export type InsertDeal = typeof deals.$inferInsert;
 /**
  * Badges table - available badges users can earn
  */
-export const badges = mysqlTable("badges", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
+export const badges = sqliteTable("badges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
   description: text("description").notNull(),
-  icon: varchar("icon", { length: 100 }).notNull(), // Emoji or icon name
-  category: mysqlEnum("category", ["reviews", "visits", "support", "challenges"]).notNull(),
-  requirement: int("requirement").notNull(), // Number needed to unlock (e.g., 5 reviews)
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  icon: text("icon").notNull(), // Emoji or icon name
+  category: text("category", { enum: ["reviews", "visits", "support", "challenges"] }).notNull(),
+  requirement: integer("requirement").notNull(), // Number needed to unlock (e.g., 5 reviews)
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 });
 
 export type Badge = typeof badges.$inferSelect;
@@ -123,13 +123,13 @@ export type InsertBadge = typeof badges.$inferInsert;
 /**
  * User badges table - tracks which badges users have earned
  */
-export const userBadges = mysqlTable("user_badges", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  badgeId: int("badgeId").notNull(),
-  earnedAt: timestamp("earnedAt").defaultNow().notNull(),
+export const userBadges = sqliteTable("user_badges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  badgeId: integer("badgeId").notNull(),
+  earnedAt: integer("earnedAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
-  userIdx: index("user_idx").on(table.userId),
+  userIdx: index("ub_user_idx").on(table.userId),
   userBadgeIdx: index("user_badge_idx").on(table.userId, table.badgeId),
 }));
 
@@ -139,20 +139,20 @@ export type InsertUserBadge = typeof userBadges.$inferInsert;
 /**
  * Challenges table - weekly/monthly challenges for users
  */
-export const challenges = mysqlTable("challenges", {
-  id: int("id").autoincrement().primaryKey(),
-  title: varchar("title", { length: 255 }).notNull(),
+export const challenges = sqliteTable("challenges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
   description: text("description").notNull(),
-  type: mysqlEnum("type", ["visit", "review", "category", "streak"]).notNull(),
-  target: int("target").notNull(), // Number to complete (e.g., 3 bakeries)
-  category: varchar("category", { length: 100 }), // For category-specific challenges
-  rewardBadgeId: int("rewardBadgeId"), // Badge earned on completion
-  startsAt: timestamp("startsAt").notNull(),
-  endsAt: timestamp("endsAt").notNull(),
-  isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  type: text("type", { enum: ["visit", "review", "category", "streak"] }).notNull(),
+  target: integer("target").notNull(), // Number to complete (e.g., 3 bakeries)
+  category: text("category"), // For category-specific challenges
+  rewardBadgeId: integer("rewardBadgeId"), // Badge earned on completion
+  startsAt: integer("startsAt", { mode: "timestamp" }).notNull(),
+  endsAt: integer("endsAt", { mode: "timestamp" }).notNull(),
+  isActive: integer("isActive", { mode: "boolean" }).default(true).notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
-  activeIdx: index("active_idx").on(table.isActive),
+  activeIdx: index("challenges_active_idx").on(table.isActive),
 }));
 
 export type Challenge = typeof challenges.$inferSelect;
@@ -161,17 +161,17 @@ export type InsertChallenge = typeof challenges.$inferInsert;
 /**
  * User challenges table - tracks user progress on challenges
  */
-export const userChallenges = mysqlTable("user_challenges", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  challengeId: int("challengeId").notNull(),
-  progress: int("progress").notNull().default(0),
-  completed: boolean("completed").default(false).notNull(),
-  completedAt: timestamp("completedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const userChallenges = sqliteTable("user_challenges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  challengeId: integer("challengeId").notNull(),
+  progress: integer("progress").notNull().default(0),
+  completed: integer("completed", { mode: "boolean" }).default(false).notNull(),
+  completedAt: integer("completedAt", { mode: "timestamp" }),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
-  userIdx: index("user_idx").on(table.userId),
+  userIdx: index("uc_user_idx").on(table.userId),
   challengeIdx: index("challenge_idx").on(table.challengeId),
   userChallengeIdx: index("user_challenge_idx").on(table.userId, table.challengeId),
 }));
@@ -182,19 +182,19 @@ export type InsertUserChallenge = typeof userChallenges.$inferInsert;
 /**
  * User stats table - tracks overall user activity for streaks and badges
  */
-export const userStats = mysqlTable("user_stats", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
-  totalReviews: int("totalReviews").notNull().default(0),
-  totalVisits: int("totalVisits").notNull().default(0),
-  totalFavorites: int("totalFavorites").notNull().default(0),
-  currentStreak: int("currentStreak").notNull().default(0), // Days in a row
-  longestStreak: int("longestStreak").notNull().default(0),
-  lastActivityDate: timestamp("lastActivityDate"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const userStats = sqliteTable("user_stats", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull().unique(),
+  totalReviews: integer("totalReviews").notNull().default(0),
+  totalVisits: integer("totalVisits").notNull().default(0),
+  totalFavorites: integer("totalFavorites").notNull().default(0),
+  currentStreak: integer("currentStreak").notNull().default(0), // Days in a row
+  longestStreak: integer("longestStreak").notNull().default(0),
+  lastActivityDate: integer("lastActivityDate", { mode: "timestamp" }),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
 }, (table) => ({
-  userIdx: index("user_idx").on(table.userId),
+  userIdx: index("us_user_idx").on(table.userId),
 }));
 
 export type UserStats = typeof userStats.$inferSelect;

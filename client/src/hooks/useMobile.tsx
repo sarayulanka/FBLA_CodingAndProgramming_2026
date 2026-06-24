@@ -1,3 +1,10 @@
+/**
+ * useMobile.tsx — Responsive breakpoint hook.
+ *
+ * Returns true when the viewport width is below the mobile breakpoint (768px).
+ * Uses a media query listener for efficient, event-driven updates.
+ */
+
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;

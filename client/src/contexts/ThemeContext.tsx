@@ -1,3 +1,12 @@
+/**
+ * ThemeContext.tsx — Light/dark theme management via React Context.
+ *
+ * Provides a ThemeProvider that:
+ *  - Applies the "dark" CSS class to <html> for Tailwind dark mode
+ *  - Optionally persists the user's preference in localStorage
+ *  - Exposes a toggleTheme() function when switching is enabled
+ */
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";

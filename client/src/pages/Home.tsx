@@ -1,4 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
+/**
+ * Home.tsx — Main landing page with hero section and business search.
+ *
+ * Features:
+ *  - Hero section with search bar, location input, category/sort filters
+ *  - Browser geolocation for automatic location detection
+ *  - Business result cards with ratings, distance, favorites, and categories
+ *  - Business details dialog with reviews, hours, and "Write a Review" flow
+ *  - Feature showcase section for first-time visitors
+ */
+
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +20,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield } from "lucide-react";
+import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield, List, Map, Sparkles } from "lucide-react";
 import { Link } from "wouter";
+import { MapView } from "@/components/Map";
+import { useSearchContext } from "@/contexts/SearchContext";
 
+/** Shape of a business object returned from the Yelp search API */
 interface Business {
   id: string;
   name: string;
@@ -32,6 +46,7 @@ interface Business {
   };
 }
 
+// Available business categories for the search filter dropdown
 const CATEGORIES = [
   { value: "restaurants", label: "Restaurants" },
   { value: "shopping", label: "Shopping" },
@@ -40,8 +55,12 @@ const CATEGORIES = [
   { value: "auto", label: "Automotive" },
 ];
 
+/**
+ * Calculates the distance between two geographic coordinates using the
+ * Haversine formula. Returns the distance in miles.
+ */
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3959;
+  const R = 3959; // Earth's radius in miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
@@ -52,16 +71,40 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
+/** Category → marker colour mapping for color-coded map pins */
+const CATEGORY_COLORS: Record<string, string> = {
+  restaurants: "#ef4444",
+  coffee: "#b45309",
+  bakeries: "#d97706",
+  desserts: "#ec4899",
+  bars: "#7c3aed",
+  shopping: "#0891b2",
+  beautysvc: "#db2777",
+  auto: "#374151",
+  homeservices: "#065f46",
+};
+
+function getCategoryColor(categories: Array<{ alias: string; title: string }> = []) {
+  for (const cat of categories) {
+    if (CATEGORY_COLORS[cat.alias]) return CATEGORY_COLORS[cat.alias];
+  }
+  return "#6d28d9"; // default violet
+}
+
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
+  const { setNearbyBusinesses } = useSearchContext();
   const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState<string | undefined>(undefined);
+  const [category, setCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"best_match" | "rating" | "review_count" | "distance">("best_match");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationName, setLocationName] = useState("");
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [pendingSearch, setPendingSearch] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -81,8 +124,12 @@ export default function Home() {
 
   const searchParams = useMemo(() => {
     return {
-      ...(location ? { latitude: location.lat, longitude: location.lng } : {}),
-      ...(locationName && !location ? { location: locationName } : {}),
+      // Typed location always wins over auto-detected GPS coords
+      ...(locationName
+        ? { location: locationName }
+        : location
+        ? { latitude: location.lat, longitude: location.lng }
+        : {}),
       ...(searchTerm ? { term: searchTerm } : {}),
       ...(category && category !== "all" ? { categories: category } : {}),
       sort_by: sortBy,
@@ -93,6 +140,66 @@ export default function Home() {
   const { data: businesses, isLoading, error } = trpc.business.search.useQuery(searchParams, {
     enabled: showSearch && (!!searchTerm || !!location || !!locationName),
   });
+
+  // Push search results to context so HelpPanel AI can reference them
+  useEffect(() => {
+    if (businesses?.businesses) {
+      setNearbyBusinesses(
+        businesses.businesses.slice(0, 8).map((b: any) => ({
+          name: b.name,
+          categories: JSON.stringify(b.categories ?? []),
+          rating: b.rating ?? 0,
+          distance: b.distance ? b.distance / 1609.34 : undefined, // metres → miles
+          hasDeals: false,
+        }))
+      );
+    }
+  }, [businesses, setNearbyBusinesses]);
+
+  /** Drop color-coded pins on the map whenever businesses update */
+  const placeMapPins = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !businesses?.businesses) return;
+
+    // Clear old markers
+    for (const m of markersRef.current) (m as any).map = null;
+    markersRef.current = [];
+
+    for (const biz of businesses.businesses) {
+      if (!biz.coordinates?.latitude || !biz.coordinates?.longitude) continue;
+      const color = getCategoryColor(biz.categories ?? []);
+
+      const pin = document.createElement("div");
+      pin.style.cssText = `width:32px;height:32px;border-radius:50% 50% 50% 0;background:${color};border:2px solid white;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:pointer;`;
+      const inner = document.createElement("div");
+      inner.style.cssText = "transform:rotate(45deg);display:flex;align-items:center;justify-content:center;width:100%;height:100%;";
+      inner.textContent = "★";
+      inner.style.fontSize = "12px";
+      inner.style.color = "white";
+      pin.appendChild(inner);
+
+      const marker = new (window as any).google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: { lat: biz.coordinates.latitude, lng: biz.coordinates.longitude },
+        title: biz.name,
+        content: pin,
+      });
+
+      marker.addListener("click", () => setSelectedBusiness(biz));
+      markersRef.current.push(marker);
+    }
+
+    // Fit bounds to show all pins
+    if (markersRef.current.length > 0 && (window as any).google) {
+      const bounds = new (window as any).google.maps.LatLngBounds();
+      for (const biz of businesses.businesses) {
+        if (biz.coordinates?.latitude && biz.coordinates?.longitude) {
+          bounds.extend({ lat: biz.coordinates.latitude, lng: biz.coordinates.longitude });
+        }
+      }
+      map.fitBounds(bounds, 60);
+    }
+  }, [businesses]);
 
   useEffect(() => {
     if (pendingSearch && location) {
@@ -210,9 +317,9 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col md:flex-row gap-3 items-center">
-                <Select value={category || undefined} onValueChange={setCategory}>
+                <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white rounded-xl h-11">
-                    <SelectValue placeholder="All Categories" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
@@ -358,25 +465,87 @@ export default function Home() {
 
           {!isLoading && businesses && businesses.businesses && businesses.businesses.length > 0 && (
             <>
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                  <Search className="w-5 h-5 text-white" />
+              {/* Results Header with map/list toggle */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                    <Search className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Found {businesses.businesses.length} {businesses.businesses.length === 1 ? "business" : "businesses"}
+                  </h2>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Found {businesses.businesses.length} {businesses.businesses.length === 1 ? "business" : "businesses"}
-                </h2>
+
+                {/* Map / List toggle */}
+                <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                      viewMode === "list"
+                        ? "bg-violet-600 text-white"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                    aria-label="List view"
+                  >
+                    <List className="w-4 h-4" />
+                    List
+                  </button>
+                  <button
+                    onClick={() => { setViewMode("map"); setTimeout(placeMapPins, 100); }}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                      viewMode === "map"
+                        ? "bg-violet-600 text-white"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                    aria-label="Map view"
+                  >
+                    <Map className="w-4 h-4" />
+                    Map
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {businesses.businesses.map((business: any) => (
-                  <BusinessCard
-                    key={business.id}
-                    business={business}
-                    onClick={() => setSelectedBusiness(business)}
-                    isAuthenticated={isAuthenticated}
-                    userLocation={location}
+
+              {/* List View */}
+              {viewMode === "list" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {businesses.businesses.map((business: any) => (
+                    <BusinessCard
+                      key={business.id}
+                      business={business}
+                      onClick={() => setSelectedBusiness(business)}
+                      isAuthenticated={isAuthenticated}
+                      userLocation={location}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Map View */}
+              {viewMode === "map" && (
+                <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-100" style={{ height: 560 }}>
+                  <MapView
+                    initialCenter={location ?? { lat: 37.7749, lng: -122.4194 }}
+                    initialZoom={13}
+                    className="w-full h-full"
+                    onMapReady={(map) => {
+                      mapRef.current = map;
+                      placeMapPins();
+                    }}
                   />
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Category legend for map */}
+              {viewMode === "map" && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {Object.entries(CATEGORY_COLORS).slice(0, 6).map(([alias, color]) => (
+                    <span key={alias} className="flex items-center gap-1.5 text-xs text-gray-600 bg-white rounded-lg px-3 py-1.5 shadow-sm border border-gray-100">
+                      <span style={{ background: color, width: 10, height: 10, borderRadius: "50%", display: "inline-block" }} />
+                      {alias.charAt(0).toUpperCase() + alias.slice(1)}
+                    </span>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -395,6 +564,10 @@ export default function Home() {
   );
 }
 
+/**
+ * BusinessCard — Displays a single business result with image, rating,
+ * price, categories, distance, and a favorite heart button.
+ */
 function BusinessCard({
   business,
   onClick,
@@ -514,6 +687,11 @@ function BusinessCard({
   );
 }
 
+/**
+ * BusinessDetailsDialog — Modal dialog showing full business details
+ * including photos, hours, contact info, Yelp reviews, community reviews,
+ * and a form to write your own review.
+ */
 function BusinessDetailsDialog({
   business,
   open,
@@ -572,6 +750,12 @@ function BusinessDetailsDialog({
   const { data: userReviews } = trpc.reviews.list.useQuery(
     { yelpId: business.id },
     { enabled: open }
+  );
+
+  // Community Pulse — AI-generated "what locals say" summary
+  const { data: pulse } = trpc.business.summarizeReviews.useQuery(
+    { yelpId: business.id },
+    { enabled: open, staleTime: 5 * 60 * 1000 }
   );
 
   return (
@@ -638,6 +822,26 @@ function BusinessDetailsDialog({
                     </Badge>
                   ))}
                 </div>
+
+                {/* Community Pulse — AI review summary */}
+                {pulse && (
+                  <div className={`p-4 rounded-xl flex items-start gap-3 ${
+                    pulse.sentiment === "positive" ? "bg-emerald-50 border border-emerald-100" :
+                    pulse.sentiment === "mixed" ? "bg-amber-50 border border-amber-100" :
+                    "bg-gray-50 border border-gray-100"
+                  }`}>
+                    <Sparkles className={`w-4 h-4 mt-0.5 shrink-0 ${
+                      pulse.sentiment === "positive" ? "text-emerald-500" :
+                      pulse.sentiment === "mixed" ? "text-amber-500" : "text-gray-400"
+                    }`} />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                        Community Pulse · {pulse.reviewCount} local reviews
+                      </p>
+                      <p className="text-sm font-medium text-gray-800">{pulse.summary}</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2 text-gray-600">
                   <div className="flex items-start gap-2">

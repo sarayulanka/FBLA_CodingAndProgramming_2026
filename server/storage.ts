@@ -1,5 +1,9 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+/**
+ * storage.ts — Cloud storage helpers for file upload and download.
+ *
+ * Provides storagePut() and storageGet() for uploading/retrieving files
+ * through the Forge storage proxy using Bearer token authentication.
+ */
 
 import { ENV } from './_core/env';
 
@@ -67,6 +71,7 @@ function buildAuthHeaders(apiKey: string): HeadersInit {
   return { Authorization: `Bearer ${apiKey}` };
 }
 
+/** Upload a file (Buffer, Uint8Array, or string) and return the storage key + public URL */
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
@@ -92,6 +97,7 @@ export async function storagePut(
   return { key, url };
 }
 
+/** Get a signed download URL for a previously uploaded file */
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);

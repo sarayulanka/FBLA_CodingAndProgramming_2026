@@ -1,3 +1,14 @@
+/**
+ * seed-gamification.ts — Database seeding script.
+ *
+ * Run this script to populate the database with:
+ *  - A demo user (for localhost testing)
+ *  - Initial badge definitions (First Review, Explorer, Critic, etc.)
+ *  - Starting weekly challenges
+ *
+ * Usage: npx tsx server/seed-gamification.ts
+ */
+
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import { badges, challenges, users } from "../drizzle/schema";
@@ -5,6 +16,7 @@ import { eq } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 
+/** Seeds the database with initial gamification data (badges, challenges, demo user) */
 async function seedGamification() {
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL not set");

@@ -1,3 +1,15 @@
+/**
+ * Badges.tsx — Gamification page showing badges, challenges, and stats.
+ *
+ * Sections:
+ *  1. Stats Overview   — Total reviews, visits, favorites, streak, badges earned
+ *  2. Active Challenges — Weekly challenges with progress bars and check-in buttons
+ *  3. Earned Badges    — Badges the user has unlocked with earn dates
+ *  4. Locked Badges    — Remaining badges shown in grayscale with requirements
+ *
+ * Requires authentication — shows a sign-in prompt if not logged in.
+ */
+
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

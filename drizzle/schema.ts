@@ -1,3 +1,21 @@
+/**
+ * schema.ts — Drizzle ORM database schema definitions.
+ *
+ * Defines all SQLite tables used by BizBloom:
+ *  - users          — OAuth-authenticated user accounts
+ *  - businesses     — Cached Yelp business data
+ *  - favorites      — User-to-business bookmark relationships
+ *  - reviews        — User-submitted star ratings and comments
+ *  - deals          — Admin-created promotional offers
+ *  - badges         — Achievement badge definitions
+ *  - userBadges     — Tracks which badges each user has earned
+ *  - challenges     — Weekly challenge definitions
+ *  - userChallenges — Tracks user progress on challenges
+ *  - userStats      — Aggregate activity stats (reviews, visits, streaks)
+ *
+ * Each table exports inferred Select and Insert types for type safety.
+ */
+
 import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 /**

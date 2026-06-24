@@ -1,3 +1,10 @@
+/**
+ * NotFound.tsx — 404 error page.
+ *
+ * Displayed when the user navigates to a route that doesn't exist.
+ * Shows a friendly error message with a button to return home.
+ */
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home } from "lucide-react";

@@ -1,3 +1,18 @@
+/**
+ * routers.ts — tRPC API router definitions for BizBloom.
+ *
+ * All server-side API endpoints are defined here using tRPC procedures.
+ * Routes are grouped into sub-routers:
+ *   - auth        — login state and logout
+ *   - business    — search, details, trending, leaderboard, autocomplete
+ *   - favorites   — add/remove/check/list user favorites
+ *   - reviews     — CRUD for user reviews
+ *   - deals       — admin-managed promotional offers
+ *   - gamification — badges, challenges, stats
+ *   - help        — AI chat assistant (AWS Bedrock)
+ *   - analytics   — community activity insights
+ */
+
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -20,6 +35,44 @@ function requireAdmin(role: string) {
   if (role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can perform this action" });
   }
+}
+
+/** Hardcoded weekly challenges that always rotate based on the current week */
+function getHardcodedChallenges() {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of current week (Sunday)
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+
+  // Rotate challenge sets based on week number
+  const weekNum = Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000));
+  const sets = [
+    [
+      { id: 1001, title: "Bakery Explorer", description: "Visit 3 different bakeries this week", type: "category" as const, target: 3, category: "bakeries", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 1002, title: "Coffee Connoisseur", description: "Try 3 different coffee shops this week", type: "category" as const, target: 3, category: "coffee", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 1003, title: "Review Streak", description: "Write 3 reviews this week", type: "review" as const, target: 3, category: null, rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 1004, title: "Local Support", description: "Visit 2 minority or student-owned businesses", type: "visit" as const, target: 2, category: "support", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 1005, title: "Foodie Adventure", description: "Try 5 different restaurants this week", type: "category" as const, target: 5, category: "restaurants", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+    ],
+    [
+      { id: 2001, title: "Sweet Tooth", description: "Visit 3 dessert places this week", type: "category" as const, target: 3, category: "desserts", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 2002, title: "Pizza Quest", description: "Try 3 different pizza places this week", type: "category" as const, target: 3, category: "pizza", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 2003, title: "Review Champion", description: "Write 5 detailed reviews this week", type: "review" as const, target: 5, category: null, rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 2004, title: "Community Explorer", description: "Visit 5 new businesses this week", type: "visit" as const, target: 5, category: "support", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 2005, title: "Brunch Hunter", description: "Visit 3 brunch spots this week", type: "category" as const, target: 3, category: "breakfast_brunch", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+    ],
+    [
+      { id: 3001, title: "Bar Hopper", description: "Visit 4 bars this week", type: "category" as const, target: 4, category: "bars", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 3002, title: "Helpful Reviewer", description: "Write 4 reviews to help others this week", type: "review" as const, target: 4, category: null, rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 3003, title: "Neighborhood Tour", description: "Visit 4 businesses in your area this week", type: "visit" as const, target: 4, category: "support", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 3004, title: "Bakery Explorer", description: "Visit 3 different bakeries this week", type: "category" as const, target: 3, category: "bakeries", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+      { id: 3005, title: "Foodie Adventure", description: "Try 5 different restaurants this week", type: "category" as const, target: 5, category: "restaurants", rewardBadgeId: null, isActive: true, startsAt: weekStart, endsAt: weekEnd, createdAt: weekStart },
+    ],
+  ];
+
+  return sets[weekNum % sets.length];
 }
 
 /** Build business upsert data from Yelp API response */
@@ -45,10 +98,15 @@ function yelpToUpsert(b: any) {
   };
 }
 
+// Main application router — exported for type inference on the client
 export const appRouter = router({
   system: systemRouter,
+
+  // ==================== AUTH ====================
   auth: router({
+    /** Returns the currently logged-in user (or null if unauthenticated) */
     me: publicProcedure.query(opts => opts.ctx.user),
+    /** Clears the session cookie and logs the user out */
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -56,8 +114,9 @@ export const appRouter = router({
     }),
   }),
 
-  // Business search and details
+  // ==================== BUSINESS SEARCH & DETAILS ====================
   business: router({
+    /** Search for businesses via the Yelp Fusion API, then cache results in our DB */
     search: publicProcedure
       .input(z.object({
         location: z.string().min(1).optional(),
@@ -146,9 +205,65 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await yelp.autocomplete(input);
       }),
+
+    /**
+     * AI-powered Community Pulse — summarizes reviews for a business using Bedrock.
+     * Returns a 1-sentence "what locals say" summary + sentiment label.
+     */
+    summarizeReviews: publicProcedure
+      .input(z.object({ yelpId: z.string() }))
+      .query(async ({ input }) => {
+        const business = await db.getBusinessByYelpId(input.yelpId);
+        if (!business) return null;
+        const businessReviews = await db.getBusinessReviews(business.id);
+        if (businessReviews.length < 2) return null;
+
+        const sentimentScores = businessReviews.map(r => db.computeSentimentScore(r.comment));
+        const avgSentiment = sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length;
+
+        // Build a short text to summarize
+        const reviewSnippets = businessReviews
+          .filter(r => r.comment && r.comment.length > 10)
+          .slice(0, 5)
+          .map(r => `${r.rating}★: "${r.comment?.slice(0, 120)}"`)
+          .join("\n");
+
+        if (!reviewSnippets) return null;
+
+        try {
+          const { BedrockRuntimeClient, InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
+          const { fromIni } = await import("@aws-sdk/credential-provider-ini");
+          const client = new BedrockRuntimeClient({
+            region: process.env.AWS_REGION || "us-east-1",
+            credentials: fromIni({ profile: "sarayu" }),
+          });
+          const payload = {
+            anthropic_version: "bedrock-2023-05-31",
+            max_tokens: 80,
+            system: "You summarize customer reviews in exactly one punchy sentence under 20 words. Start with what people love most. Be specific, not generic.",
+            messages: [{ role: "user", content: `Summarize these reviews:\n${reviewSnippets}` }],
+          };
+          const command = new InvokeModelCommand({
+            modelId: "anthropic.claude-3-haiku-20240307-v1:0",
+            contentType: "application/json",
+            accept: "application/json",
+            body: JSON.stringify(payload),
+          });
+          const response = await client.send(command);
+          const body = JSON.parse(new TextDecoder().decode(response.body));
+          const summary = body.content?.[0]?.text ?? null;
+          const sentiment = avgSentiment >= 0.7 ? "positive" : avgSentiment >= 0.45 ? "mixed" : "critical";
+          return { summary, sentiment, reviewCount: businessReviews.length };
+        } catch {
+          // Fallback: keyword-based summary
+          const sentiment = avgSentiment >= 0.7 ? "positive" : avgSentiment >= 0.45 ? "mixed" : "critical";
+          const topWords = avgSentiment >= 0.7 ? "Community loves this spot!" : avgSentiment >= 0.45 ? "Mixed reviews from the community." : "Some concerns flagged by reviewers.";
+          return { summary: topWords, sentiment, reviewCount: businessReviews.length };
+        }
+      }),
   }),
 
-  // Favorites
+  // ==================== FAVORITES ====================
   favorites: router({
     list: protectedProcedure
       .query(async ({ ctx }) => {
@@ -203,7 +318,7 @@ export const appRouter = router({
       }),
   }),
 
-  // Reviews
+  // ==================== REVIEWS ====================
   reviews: router({
     list: publicProcedure
       .input(z.object({
@@ -291,7 +406,7 @@ export const appRouter = router({
       }),
   }),
 
-  // Deals
+  // ==================== DEALS (admin-only creation) ====================
   deals: router({
     list: publicProcedure
       .input(z.object({
@@ -366,7 +481,7 @@ export const appRouter = router({
       }),
   }),
 
-  // Gamification (Badges & Challenges)
+  // ==================== GAMIFICATION (Badges & Challenges) ====================
   gamification: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       return await db.getUserStats(ctx.user.id);
@@ -381,10 +496,13 @@ export const appRouter = router({
     }),
 
     activeChallenges: publicProcedure.query(async () => {
+      // Ensure weekly challenges are seeded before returning
+      await db.regenerateWeeklyChallenges();
       return await db.getActiveChallenges();
     }),
 
     myProgress: protectedProcedure.query(async ({ ctx }) => {
+      // Ensure weekly challenges are seeded, then return real DB progress
       await db.regenerateWeeklyChallenges();
       return await db.getUserChallengeProgress(ctx.user.id);
     }),
@@ -403,7 +521,7 @@ export const appRouter = router({
       }),
   }),
 
-  // Help / AI Chat
+  // ==================== HELP / AI CHAT (AWS Bedrock integration) ====================
   help: router({
     chat: publicProcedure
       .input(z.object({
@@ -411,6 +529,31 @@ export const appRouter = router({
           role: z.enum(["system", "user", "assistant"]),
           content: z.string().min(1).max(2000),
         })),
+        /** Optional personalization context injected by the client */
+        userContext: z.object({
+          userLocation: z.object({ lat: z.number(), lng: z.number(), city: z.string().optional() }).optional(),
+          nearbyBusinesses: z.array(z.object({
+            name: z.string(),
+            categories: z.string().optional(),
+            rating: z.number(),
+            distance: z.number().optional(),
+            hasDeals: z.boolean().optional(),
+          })).max(8).optional(),
+          userProfile: z.object({
+            name: z.string().optional(),
+            totalReviews: z.number(),
+            totalFavorites: z.number(),
+            badgesEarned: z.array(z.string()),
+            activeChallenges: z.array(z.object({
+              title: z.string(),
+              description: z.string(),
+              progress: z.number(),
+              target: z.number(),
+              category: z.string().nullable().optional(),
+            })),
+            recentFavoriteCategories: z.array(z.string()),
+          }).optional(),
+        }).optional(),
       }))
       .mutation(async ({ input }) => {
         // Use AWS Bedrock for intelligent Q&A
@@ -427,8 +570,40 @@ export const appRouter = router({
         const stats = await db.getAnalyticsSummary("all");
         const activeChallenges = await db.getActiveChallenges();
         const allBadges = await db.getAllBadges();
+        const ctx = input.userContext;
 
-        const systemPrompt = `You are BizBloom's helpful assistant. BizBloom is a web platform for discovering and supporting local small businesses. Answer ONLY based on the information below — do not guess or invent features.
+        // Build personalized context block
+        let personalizedSection = "";
+        if (ctx?.userProfile) {
+          const p = ctx.userProfile;
+          personalizedSection += `\n## About This User\n`;
+          if (p.name) personalizedSection += `- Name: ${p.name}\n`;
+          personalizedSection += `- They've written ${p.totalReviews} reviews and saved ${p.totalFavorites} favorites\n`;
+          if (p.badgesEarned.length > 0) personalizedSection += `- Badges earned: ${p.badgesEarned.join(", ")}\n`;
+          if (p.recentFavoriteCategories.length > 0) personalizedSection += `- They love: ${p.recentFavoriteCategories.join(", ")}\n`;
+          if (p.activeChallenges.length > 0) {
+            personalizedSection += `- Active challenges:\n`;
+            for (const c of p.activeChallenges) {
+              personalizedSection += `  • "${c.title}" — ${c.progress}/${c.target} complete (${c.description})\n`;
+            }
+          }
+        }
+        if (ctx?.userLocation) {
+          const loc = ctx.userLocation;
+          personalizedSection += `\n## User's Current Location\n`;
+          personalizedSection += `- Coordinates: ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}${loc.city ? ` (${loc.city})` : ""}\n`;
+        }
+        if (ctx?.nearbyBusinesses && ctx.nearbyBusinesses.length > 0) {
+          personalizedSection += `\n## Nearby Businesses (from their current search)\n`;
+          for (const b of ctx.nearbyBusinesses) {
+            const cats = b.categories ? (() => { try { return JSON.parse(b.categories!).map((c: any) => c.title).join(", "); } catch { return b.categories; } })() : "";
+            personalizedSection += `- **${b.name}** — ${(b.rating / 10).toFixed(1)}★${b.distance ? `, ${b.distance.toFixed(1)}mi away` : ""}${cats ? `, ${cats}` : ""}${b.hasDeals ? " 🏷️ has deals" : ""}\n`;
+          }
+          personalizedSection += `\nYou CAN recommend these specific businesses when the user asks for suggestions — they are real, local businesses near the user right now.\n`;
+        }
+
+        const personalizedBlock = personalizedSection ? "\n" + personalizedSection : "";
+        const systemPrompt = `You are BizBloom's helpful assistant. BizBloom is a web platform for discovering and supporting local small businesses. Answer ONLY based on the information below — do not guess or invent features.${personalizedBlock}
 
 ## Pages & Navigation (top nav bar)
 - **Home** ("/") — Main page with search, hero section, and business results
@@ -436,6 +611,7 @@ export const appRouter = router({
 - **Deals** ("/deals") — Special offers and coupons posted by admins
 - **Reviews** ("/community-reviews") — Browse all community reviews, searchable by business name, user, or content
 - **Favorites** ("/favorites") — Saved businesses (sign-in required)
+- **Impact** ("/impact") — Local Impact Dashboard showing community stats, live activity feed, and sentiment gauge
 - **Analytics** ("/analytics") — Community activity charts with date filters (7d, 30d, all time), category breakdowns, top-rated table, and CSV export
 - **Help** — This chat panel, accessible from the nav bar
 
@@ -445,6 +621,7 @@ export const appRouter = router({
 3. Optionally pick a category: Restaurants, Shopping, Home Services, Beauty & Spas, or Automotive
 4. Choose a sort: Best Match, Highest Rated, Most Reviewed, or Nearest
 5. Click "Search" — business cards appear with photo, rating, price, categories, and distance
+6. Toggle between List view and Map view using the buttons above the results
 
 ## How to Write a Review
 1. Sign in to your account (click "Sign In" in the top-right)
@@ -456,12 +633,12 @@ export const appRouter = router({
 
 ## How to Favorite a Business
 - On any business card, click the heart icon (you must be signed in)
-- A filled red heart means it's saved; click again to remove
+- A filled red heart means it\'s saved; click again to remove
 - View all saved businesses on the Favorites page
 
 ## Badges & Challenges
-Available badges: ${allBadges.map(b => `${b.icon} ${b.name} (${b.description})`).join(", ") || "loading..."}
-Active challenges: ${activeChallenges.length > 0 ? activeChallenges.map(c => `"${c.title}" — ${c.description}`).join("; ") : "new challenges are generated weekly"}
+Available badges: ${allBadges.map(b => b.icon + " " + b.name + " (" + b.description + ")").join(", ") || "loading..."}
+Active challenges: ${activeChallenges.length > 0 ? activeChallenges.map(c => '"' + c.title + '" — ' + c.description).join("; ") : "new challenges are generated weekly"}
 - Badges are earned automatically when you hit milestones (e.g. write your first review)
 - Challenges are weekly — check in on the Badges page to track progress
 
@@ -476,17 +653,21 @@ IMPORTANT RULES:
 - Never write long paragraphs. Get straight to the point.
 - Be friendly but brief. If asked about something outside BizBloom, politely say you can only help with the platform.`;
 
-        const conversationMessages = input.messages.filter(m => m.role !== "system");
+        // Filter out system messages (Bedrock only accepts user/assistant roles)
+        const conversationMessages = input.messages
+          .filter((m) => m.role !== "system")
+          .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+        if (conversationMessages.length === 0) {
+          return { reply: "Hi! How can I help you discover local businesses today?" };
+        }
 
         try {
           const payload = {
             anthropic_version: "bedrock-2023-05-31",
-            max_tokens: 300,
+            max_tokens: 500,
             system: systemPrompt,
-            messages: conversationMessages.map(m => ({
-              role: m.role as "user" | "assistant",
-              content: m.content,
-            })),
+            messages: conversationMessages,
           };
 
           const command = new InvokeModelCommand({
@@ -498,45 +679,35 @@ IMPORTANT RULES:
 
           const response = await client.send(command);
           const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-
-          return {
-            reply: responseBody.content?.[0]?.text || "I'm sorry, I couldn't generate a response. Please try again.",
+          const reply = responseBody.content?.[0]?.text ?? "I couldn\'t generate a response. Please try again.";
+          return { reply };
+        } catch (error) {
+          console.error("Bedrock error:", error);
+          const lastMsg = conversationMessages[conversationMessages.length - 1]?.content?.toLowerCase() ?? "";
+          const faqMap: Record<string, string> = {
+            search: "Go to the Home page, type what you\'re looking for, optionally pick a category or location, then click Search.",
+            review: "Open a business card, click \'Write a Review\', pick a star rating, add a comment, and submit.",
+            favorite: "Click the heart icon on any business card. Sign in first if you haven\'t.",
+            badge: "Badges are earned automatically. Write reviews, save favorites, and visit businesses to unlock them.",
+            challenge: "Weekly challenges appear on the Badges page. Complete them before Sunday to earn bonus points.",
+            trending: "Visit the Trending page to see which businesses have the most community activity this week.",
+            deal: "Go to the Deals page to browse special offers posted by local businesses.",
+            impact: "Visit the Impact page to see the community\'s collective stats — total reviews, favorites, and a live activity feed.",
+            map: "On the Home page, click the Map icon above search results to switch to map view with color-coded pins.",
           };
-        } catch (error: any) {
-          console.error("[Help Chat] Bedrock error:", error);
-          // Fallback to built-in FAQ responses if Bedrock is unavailable
-          const lastMessage = conversationMessages[conversationMessages.length - 1]?.content?.toLowerCase() || "";
-
-          const faqResponses: Record<string, string> = {
-            search: "To search for businesses, use the search bar on the home page. Enter what you're looking for and optionally a location. You can filter by category and sort results by rating, reviews, or distance.",
-            review: "To write a review: 1) Sign in to your account, 2) Search for a business on the home page, 3) Click on a business card to open its details, 4) Click 'Write a Review', 5) Select your star rating (1-5), optionally write a comment, and click Submit!",
-            favorite: "To save a business to your favorites, click the heart icon on any business card. You need to be signed in. View all your saved favorites from the 'Favorites' link in the navigation.",
-            deal: "Browse current deals and special offers on the Deals page. These are posted by business administrators and may include discount codes.",
-            badge: "Earn badges by being active on BizBloom! Write reviews to earn review badges, visit businesses for explorer badges, and complete weekly challenges. Check your progress on the Badges page.",
-            trending: "The Trending page shows businesses with the most community activity in the last 30 days, including favorites and reviews.",
-            analytics: "The Analytics page shows community activity data with charts. You can filter by date range (7 days, 30 days, all time) and see category breakdowns, review activity over time, and top-rated businesses. You can also export data to CSV.",
-            challenge: "Weekly challenges appear on the Badges page. Check in to challenges to track your progress. Complete them to earn special badges!",
-            category: "BizBloom supports categories including Restaurants, Shopping, Home Services, Beauty & Spas, and Automotive. Use the category filter when searching.",
-          };
-
-          for (const [keyword, response] of Object.entries(faqResponses)) {
-            if (lastMessage.includes(keyword)) {
-              return { reply: response };
-            }
+          for (const [key, answer] of Object.entries(faqMap)) {
+            if (lastMsg.includes(key)) return { reply: answer };
           }
-
-          return {
-            reply: "I'm BizBloom's help assistant! I can help you with:\n\n- **Searching** for businesses\n- **Writing reviews** and earning badges\n- **Saving favorites**\n- **Browsing deals** and trending businesses\n- **Understanding analytics**\n- **Completing challenges**\n\nWhat would you like to know?",
-          };
+          return { reply: "I\'m having trouble connecting right now. Please try asking again in a moment!" };
         }
       }),
   }),
 
-  // Analytics
+  // ==================== ANALYTICS ====================
   analytics: router({
     summary: publicProcedure
       .input(z.object({
-        dateRange: z.enum(["7d", "30d", "all"]).default("30d"),
+        dateRange: z.enum(["7d", "30d", "all"]).default("all"),
       }))
       .query(async ({ input }) => {
         return await db.getAnalyticsSummary(input.dateRange);
@@ -562,7 +733,21 @@ IMPORTANT RULES:
       .query(async ({ input }) => {
         return await db.getTopRatedBusinesses();
       }),
+
+    /** Live community activity feed — recent reviews and favorites */
+    communityFeed: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
+      .query(async ({ input }) => {
+        return await db.getCommunityFeed(input.limit);
+      }),
+
+    /** Aggregate impact metrics for the Local Impact Dashboard */
+    communityImpact: publicProcedure
+      .query(async () => {
+        return await db.getCommunityImpact();
+      }),
   }),
 });
 
+/** Exported router type — imported by the client for end-to-end type safety */
 export type AppRouter = typeof appRouter;

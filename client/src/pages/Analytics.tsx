@@ -1,3 +1,17 @@
+/**
+ * Analytics.tsx — Community activity insights dashboard.
+ *
+ * Features:
+ *  - Date range filter (7 days, 30 days, all time)
+ *  - Summary stat cards (reviews, businesses, favorites, avg rating)
+ *  - Review activity area chart (reviews over time)
+ *  - Favorites by category donut/pie chart
+ *  - Top-rated businesses table with rank badges
+ *  - CSV export of all analytics data
+ *
+ * Charts powered by Recharts (responsive, interactive).
+ */
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +34,7 @@ import {
   AreaChart,
 } from "recharts";
 
+// Violet/indigo color palette for pie chart segments
 const COLORS = ["#8b5cf6", "#6366f1", "#a78bfa", "#c084fc", "#e879f9", "#818cf8", "#7c3aed", "#4f46e5", "#9333ea", "#6d28d9"];
 
 type DateRange = "7d" | "30d" | "all";
@@ -32,6 +47,7 @@ export default function Analytics() {
   const { data: categoryData, isLoading: categoryLoading } = trpc.analytics.categoryBreakdown.useQuery();
   const { data: topRated } = trpc.analytics.topRated.useQuery({ limit: 10 });
 
+  /** Builds and downloads a CSV file containing all analytics data */
   const handleExportCSV = () => {
     if (!reviewsByDate || !categoryData) return;
 

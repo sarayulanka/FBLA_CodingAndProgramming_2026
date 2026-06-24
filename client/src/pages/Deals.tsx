@@ -1,3 +1,13 @@
+/**
+ * Deals.tsx — Special offers and promotional deals page.
+ *
+ * Displays active deals posted by admins, each showing:
+ *  - Deal title and description
+ *  - Optional promo code in a highlighted box
+ *  - Expiration date
+ *  - Associated business info with address and categories
+ */
+
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,6 +72,7 @@ export default function Deals() {
   );
 }
 
+/** Individual deal card with promo code display and business info */
 function DealCard({ deal }: { deal: any }) {
   const categories = deal.business?.categories ? JSON.parse(deal.business.categories) : [];
 

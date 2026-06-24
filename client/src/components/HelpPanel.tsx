@@ -1,8 +1,25 @@
-import { useState, useRef, useEffect } from "react";
+/**
+ * HelpPanel.tsx — AI-powered help sidebar.
+ *
+ * Slides in from the right when the user clicks "Help" in the nav bar.
+ * Uses the help.chat tRPC mutation to send messages to an AI assistant
+ * (powered by AWS Bedrock / Claude) for contextual, personalized help.
+ *
+ * Personalization features:
+ *  - Passes the user's location, nearby businesses, badges, and active challenges
+ *  - AI can recommend specific local businesses the user hasn't tried yet
+ *  - AI knows the user's challenge progress and can give tailored advice
+ *  - Suggested quick-start topics
+ *  - Real-time chat with typing indicator
+ *  - Keyboard support (Enter to send, Shift+Enter for newline)
+ */
+
+import { useState, useRef, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
-import { X, Send, Sparkles, Loader2, User, Search, Star, Heart, Trophy, MessageSquare } from "lucide-react";
+import { X, Send, Sparkles, Loader2, User, Search, Star, Heart, Trophy, MessageSquare, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type Message = {
   role: "system" | "user" | "assistant";
@@ -12,24 +29,86 @@ type Message = {
 interface HelpPanelProps {
   open: boolean;
   onClose: () => void;
+  /** Optional nearby businesses from the current search to give the AI real local context */
+  nearbyBusinesses?: Array<{
+    name: string;
+    categories: string;
+    rating: number;
+    distance?: number;
+    hasDeals?: boolean;
+  }>;
 }
 
+// Pre-defined suggested topics shown when the chat is empty
 const SUGGESTED_TOPICS = [
   { icon: Search, label: "How to search", prompt: "How do I search for businesses?" },
   { icon: Star, label: "Write a review", prompt: "How do I write a review?" },
   { icon: Heart, label: "Save favorites", prompt: "How do I save favorites?" },
   { icon: Trophy, label: "Earn badges", prompt: "How do I earn badges?" },
+  { icon: MapPin, label: "Find nearby", prompt: "What's good near me right now?" },
+  { icon: Sparkles, label: "My challenges", prompt: "What challenges am I working on and how close am I?" },
 ];
 
-export function HelpPanel({ open, onClose }: HelpPanelProps) {
+export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     { role: "system", content: "You are BizBloom's helpful assistant." },
   ]);
   const [input, setInput] = useState("");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Fetch personalization data when panel opens and user is logged in
+  const { data: userStats } = trpc.gamification.stats.useQuery(undefined, { enabled: !!user && open });
+  const { data: myBadges } = trpc.gamification.myBadges.useQuery(undefined, { enabled: !!user && open });
+  const { data: challengeProgress } = trpc.gamification.myProgress.useQuery(undefined, { enabled: !!user && open });
+  const { data: userFavorites } = trpc.favorites.list.useQuery(undefined, { enabled: !!user && open });
+
+  // Grab geolocation when panel opens
+  useEffect(() => {
+    if (open && !userLocation && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      }, () => {});
+    }
+  }, [open]);
+
   const displayMessages = messages.filter((m) => m.role !== "system");
+
+  /** Build rich user context to pass with each message */
+  const buildUserContext = useCallback(() => {
+    const ctx: any = {};
+    if (userLocation) ctx.userLocation = userLocation;
+    if (nearbyBusinesses && nearbyBusinesses.length > 0) ctx.nearbyBusinesses = nearbyBusinesses.slice(0, 8);
+    if (user && userStats) {
+      // Extract recent favorite categories from the user's favorites list
+      const recentCats: string[] = [];
+      if (userFavorites) {
+        for (const fav of userFavorites.slice(0, 10)) {
+          try {
+            const cats = JSON.parse((fav as any).categories || "[]");
+            for (const c of cats) if (c.title && !recentCats.includes(c.title)) recentCats.push(c.title);
+          } catch {}
+        }
+      }
+      ctx.userProfile = {
+        name: user.name ?? undefined,
+        totalReviews: userStats.totalReviews ?? 0,
+        totalFavorites: userStats.totalFavorites ?? 0,
+        badgesEarned: (myBadges ?? []).map((b: any) => `${b.icon} ${b.name}`),
+        activeChallenges: (challengeProgress ?? []).map((cp: any) => ({
+          title: cp.challenge?.title ?? "",
+          description: cp.challenge?.description ?? "",
+          progress: cp.progress ?? 0,
+          target: cp.challenge?.target ?? 1,
+          category: cp.challenge?.category ?? null,
+        })),
+        recentFavoriteCategories: recentCats.slice(0, 5),
+      };
+    }
+    return Object.keys(ctx).length > 0 ? ctx : undefined;
+  }, [user, userStats, myBadges, challengeProgress, userFavorites, userLocation, nearbyBusinesses]);
 
   const chatMutation = trpc.help.chat.useMutation({
     onSuccess: (data) => {
@@ -48,7 +127,7 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
     const newMessages: Message[] = [...messages, { role: "user", content }];
     setMessages(newMessages);
     setInput("");
-    chatMutation.mutate({ messages: newMessages });
+    chatMutation.mutate({ messages: newMessages, userContext: buildUserContext() });
   };
 
   useEffect(() => {

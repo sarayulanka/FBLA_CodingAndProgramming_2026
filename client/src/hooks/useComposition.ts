@@ -1,3 +1,11 @@
+/**
+ * useComposition.ts — IME (Input Method Editor) composition handler.
+ *
+ * Prevents Enter/Escape key events from firing during IME composition
+ * (e.g., when typing CJK characters). This avoids accidentally submitting
+ * a form or closing a dialog while the user is still composing text.
+ */
+
 import { useRef } from "react";
 import { usePersistFn } from "./usePersistFn";
 

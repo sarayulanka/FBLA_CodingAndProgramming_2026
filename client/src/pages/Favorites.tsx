@@ -1,3 +1,11 @@
+/**
+ * Favorites.tsx — User's saved businesses page.
+ *
+ * Displays a grid of businesses the user has favorited.
+ * Requires authentication — shows a sign-in prompt if not logged in.
+ * Each card includes a remove button to unfavorite the business.
+ */
+
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,6 +104,7 @@ export default function Favorites() {
   );
 }
 
+/** Individual favorite business card with remove (trash) button */
 function FavoriteBusinessCard({ business }: { business: any }) {
   const utils = trpc.useUtils();
 

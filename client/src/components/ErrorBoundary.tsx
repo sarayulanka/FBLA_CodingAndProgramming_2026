@@ -1,3 +1,11 @@
+/**
+ * ErrorBoundary.tsx — Global error boundary component.
+ *
+ * Catches unhandled JavaScript errors in any child component tree
+ * and displays a user-friendly error screen with a "Reload" button
+ * instead of crashing the entire application.
+ */
+
 import { cn } from "@/lib/utils";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Component, ReactNode } from "react";

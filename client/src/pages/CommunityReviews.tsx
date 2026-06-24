@@ -1,3 +1,12 @@
+/**
+ * CommunityReviews.tsx — Browse all user-submitted reviews.
+ *
+ * Displays every community review across all businesses with:
+ *  - Full-text search filtering by business name, reviewer name, or content
+ *  - Star ratings and reviewer avatars
+ *  - Business category badges
+ */
+
 import { useState } from "react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +113,7 @@ export default function CommunityReviews() {
   );
 }
 
+/** Individual review card showing the business name, rating, reviewer, and comment */
 function ReviewCard({ review }: { review: any }) {
   const categories = review.businessCategories ? JSON.parse(review.businessCategories) : [];
 

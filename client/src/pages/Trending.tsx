@@ -1,3 +1,12 @@
+/**
+ * Trending.tsx — Trending businesses, recommendations, and leaderboard.
+ *
+ * Three tabs:
+ *  1. Trending   — Businesses with the most community activity (favorites) in 30 days
+ *  2. For You    — Personalized recommendations based on user's favorite categories
+ *  3. Top Rated  — Leaderboard of highest-rated businesses with trophy badges
+ */
+
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +141,7 @@ export default function Trending() {
   );
 }
 
+/** Loading skeleton placeholder grid (reusable across all three tabs) */
 function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -148,6 +158,7 @@ function GridSkeleton() {
   );
 }
 
+/** Reusable empty state component with icon, title, and description */
 function EmptyState({ icon: Icon, title, description }: { icon: any; title: string; description: string }) {
   return (
     <div className="text-center py-16">
@@ -160,6 +171,7 @@ function EmptyState({ icon: Icon, title, description }: { icon: any; title: stri
   );
 }
 
+/** Business card with optional rank badge and trophy icon for leaderboard */
 function BusinessCard({ business, rank, showTrophy }: { business: any; rank?: number; showTrophy?: boolean }) {
   const categories = business.categories ? JSON.parse(business.categories) : [];
   const rating = business.rating / 10;

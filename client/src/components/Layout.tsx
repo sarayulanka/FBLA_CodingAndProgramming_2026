@@ -1,3 +1,11 @@
+/**
+ * Layout.tsx — Shared page layout with responsive navigation.
+ *
+ * Renders the sticky top navigation bar (desktop + mobile hamburger menu),
+ * user authentication controls, and the AI Help panel.
+ * All page content is rendered as {children} inside the <main> tag.
+ */
+
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -6,21 +14,25 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { trpc } from "@/lib/trpc";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { HelpPanel } from "@/components/HelpPanel";
+import { useSearchContext } from "@/contexts/SearchContext";
 import {
   Building2, TrendingUp, Tag, MessageSquare, Heart, BarChart3,
-  HelpCircle, User, ChevronDown, LogOut, Trophy, Menu, X, Sparkles
+  HelpCircle, User, ChevronDown, LogOut, Trophy, Menu, X, Sparkles, Globe
 } from "lucide-react";
 
+// Navigation items displayed in the top bar (both desktop and mobile)
 const NAV_ITEMS = [
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/deals", label: "Deals", icon: Tag },
   { href: "/community-reviews", label: "Reviews", icon: MessageSquare },
   { href: "/favorites", label: "Favorites", icon: Heart },
+  { href: "/impact", label: "Impact", icon: Globe },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
+  const { nearbyBusinesses } = useSearchContext();
   const [location] = useLocation();
   const [showHelp, setShowHelp] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -161,7 +173,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main>{children}</main>
 
       {/* Help Panel */}
-      <HelpPanel open={showHelp} onClose={() => setShowHelp(false)} />
+      <HelpPanel open={showHelp} onClose={() => setShowHelp(false)} nearbyBusinesses={nearbyBusinesses} />
     </div>
   );
 }

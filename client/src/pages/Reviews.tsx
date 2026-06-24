@@ -1,3 +1,11 @@
+/**
+ * Reviews.tsx — "Write a Review" instructions page.
+ *
+ * Guides authenticated users to the Home page where they can
+ * search for a business and write a review from the details dialog.
+ * Unauthenticated users see a sign-in prompt.
+ */
+
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";

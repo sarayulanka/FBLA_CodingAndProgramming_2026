@@ -1,5 +1,18 @@
-// For best practices slide
-import { eq, and, desc, sql } from "drizzle-orm";
+/**
+ * db.ts — Database access layer for BizBloom.
+ *
+ * Uses Drizzle ORM with libSQL (SQLite) for type-safe database queries.
+ * All database operations are grouped by domain:
+ *   - Users          — upsert and lookup
+ *   - Businesses     — cache Yelp data locally
+ *   - Favorites      — user bookmarks
+ *   - Reviews        — user-submitted ratings and comments
+ *   - Deals          — admin-created promotional offers
+ *   - Gamification   — badges, challenges, streaks, and stats
+ *   - Analytics      — aggregated community metrics
+ */
+
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import {
@@ -18,9 +31,14 @@ import { ENV } from './_core/env';
 import path from "path";
 import fs from "fs";
 
+// Singleton database instance — lazily initialized on first use
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+/**
+ * Lazily create the Drizzle ORM instance.
+ * Supports both local file-based SQLite and remote libSQL (Turso) URLs.
+ * Returns null gracefully if DATABASE_URL is not configured.
+ */
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -46,6 +64,12 @@ export async function getDb() {
   return _db;
 }
 
+// ==================== USER FUNCTIONS ====================
+
+/**
+ * Insert a new user or update an existing one (matched by openId).
+ * Automatically assigns the 'admin' role if the user's openId matches the owner.
+ */
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -106,6 +130,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 }
 
+/** Look up a user by their OAuth openId. Returns undefined if not found. */
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) {
@@ -118,8 +143,12 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ===== BUSINESS FUNCTIONS =====
+// ==================== BUSINESS FUNCTIONS ====================
 
+/**
+ * Insert or update a cached business record.
+ * Uses the Yelp ID as the conflict target for upserts.
+ */
 export async function upsertBusiness(business: InsertBusiness): Promise<Business> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -167,8 +196,9 @@ export async function getBusinessById(id: number): Promise<Business | undefined>
   return result[0];
 }
 
-// ===== FAVORITES FUNCTIONS =====
+// ==================== FAVORITES FUNCTIONS ====================
 
+/** Save a business to the user's favorites list */
 export async function addFavorite(userId: number, businessId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -176,6 +206,7 @@ export async function addFavorite(userId: number, businessId: number): Promise<v
   await db.insert(favorites).values({ userId, businessId });
 }
 
+/** Remove a business from the user's favorites list */
 export async function removeFavorite(userId: number, businessId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -188,6 +219,7 @@ export async function removeFavorite(userId: number, businessId: number): Promis
   );
 }
 
+/** Get all favorited businesses for a user, ordered by most recently added */
 export async function getUserFavorites(userId: number): Promise<Business[]> {
   const db = await getDb();
   if (!db) return [];
@@ -218,8 +250,9 @@ export async function isFavorite(userId: number, businessId: number): Promise<bo
   return result.length > 0;
 }
 
-// ===== REVIEWS FUNCTIONS =====
+// ==================== REVIEWS FUNCTIONS ====================
 
+/** Create a new review and return the inserted record */
 export async function createReview(review: InsertReview): Promise<Review> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -234,6 +267,7 @@ export async function createReview(review: InsertReview): Promise<Review> {
   return inserted;
 }
 
+/** Update a review (only the owning user can modify their own review) */
 export async function updateReview(id: number, userId: number, rating: number, comment: string | null): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -246,6 +280,7 @@ export async function updateReview(id: number, userId: number, rating: number, c
   );
 }
 
+/** Delete a review (only the owning user can delete their own review) */
 export async function deleteReview(id: number, userId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -258,6 +293,7 @@ export async function deleteReview(id: number, userId: number): Promise<void> {
   );
 }
 
+/** Get all reviews for a business, joined with the reviewer's display name */
 export async function getBusinessReviews(businessId: number): Promise<(Review & { userName: string | null })[]> {
   const db = await getDb();
   if (!db) return [];
@@ -289,6 +325,7 @@ export async function getUserReviewForBusiness(userId: number, businessId: numbe
   return result[0];
 }
 
+/** Get all reviews across all businesses (for the Community Reviews page) */
 export async function getAllReviewsWithBusinessInfo(): Promise<Array<Review & { userName: string | null; businessName: string; businessCategories: string | null }>> {
   const db = await getDb();
   if (!db) return [];
@@ -308,28 +345,109 @@ export async function getAllReviewsWithBusinessInfo(): Promise<Array<Review & { 
   return result.map(r => ({ ...r.review, userName: r.userName, businessName: r.businessName, businessCategories: r.businessCategories }));
 }
 
-export async function getTrendingBusinesses(): Promise<Business[]> {
+/**
+ * Compute a sentiment score (0–1) for a review comment.
+ * Uses keyword matching across positive/negative word lists.
+ * Returns 0.5 (neutral) for empty or unscored text.
+ */
+export function computeSentimentScore(comment: string | null): number {
+  if (!comment || comment.trim().length < 3) return 0.5;
+  const text = comment.toLowerCase();
+  const positiveWords = [
+    "love", "amazing", "great", "excellent", "fantastic", "best", "delicious",
+    "wonderful", "perfect", "recommend", "outstanding", "superb", "incredible",
+    "awesome", "phenomenal", "exceptional", "brilliant", "favorite", "gem",
+    "underrated", "hidden gem", "must try", "worth", "impressed", "friendly",
+    "fresh", "clean", "cozy", "welcoming", "authentic", "quality", "good",
+    "nice", "pleasant", "enjoyed", "happy", "satisfied", "beautiful", "helpful",
+  ];
+  const negativeWords = [
+    "terrible", "awful", "horrible", "bad", "disappointing", "worst", "avoid",
+    "disgusting", "rude", "dirty", "overpriced", "slow", "cold", "stale",
+    "mediocre", "bland", "boring", "waste", "never return", "not worth",
+    "poor", "gross", "nasty", "unfriendly", "unpleasant", "closed", "empty",
+  ];
+  let positiveCount = 0;
+  let negativeCount = 0;
+  for (const word of positiveWords) if (text.includes(word)) positiveCount++;
+  for (const word of negativeWords) if (text.includes(word)) negativeCount++;
+  const total = positiveCount + negativeCount;
+  if (total === 0) return 0.5 + (Math.min(comment.length, 200) / 4000); // slight boost for long reviews
+  return Math.max(0, Math.min(1, (positiveCount / total) * 0.8 + 0.1));
+}
+
+/**
+ * Get trending businesses using a sentiment-velocity algorithm.
+ *
+ * Score = (recentFavoriteMomentum × 1.5) + (recentReviewVelocity × avgSentiment × 2) + (communityRatingBonus)
+ *
+ * This means a business with rapidly improving reviews beats one with
+ * stale favorites — rewarding businesses the community is excited about *right now*.
+ */
+export async function getTrendingBusinesses(): Promise<(Business & { trendScore: number; sentimentAvg: number; recentActivity: number })[]> {
   const db = await getDb();
   if (!db) return [];
 
-  // Get businesses with most favorites in the last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const result = await db
-    .select({
-      business: businesses,
-      favoriteCount: sql<number>`COUNT(${favorites.id})`,
-    })
-    .from(businesses)
-    .leftJoin(favorites, eq(businesses.id, favorites.businessId))
-    .groupBy(businesses.id)
-    .orderBy(desc(sql<number>`COUNT(${favorites.id})`), desc(businesses.rating))
-    .limit(10);
+  // Fetch recent reviews with their sentiment-eligible content
+  const recentReviews = await db
+    .select({ businessId: reviews.businessId, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt })
+    .from(reviews)
+    .where(sql`${reviews.createdAt} >= ${thirtyDaysAgo}`);
 
-  return result.map(r => r.business);
+  // Fetch recent favorites
+  const recentFavorites = await db
+    .select({ businessId: favorites.businessId, createdAt: favorites.createdAt })
+    .from(favorites)
+    .where(sql`${favorites.createdAt} >= ${thirtyDaysAgo}`);
+
+  // Aggregate per business
+  const scoreMap = new Map<number, { reviewCount: number; sentimentSum: number; favCount30d: number; favCount7d: number }>();
+  for (const r of recentReviews) {
+    if (!r.businessId) continue;
+    const entry = scoreMap.get(r.businessId) ?? { reviewCount: 0, sentimentSum: 0, favCount30d: 0, favCount7d: 0 };
+    entry.reviewCount++;
+    entry.sentimentSum += computeSentimentScore(r.comment);
+    scoreMap.set(r.businessId, entry);
+  }
+  for (const f of recentFavorites) {
+    if (!f.businessId) continue;
+    const entry = scoreMap.get(f.businessId) ?? { reviewCount: 0, sentimentSum: 0, favCount30d: 0, favCount7d: 0 };
+    entry.favCount30d++;
+    if (f.createdAt && f.createdAt >= sevenDaysAgo) entry.favCount7d++;
+    scoreMap.set(f.businessId, entry);
+  }
+
+  if (scoreMap.size === 0) {
+    // Fallback: return top-rated
+    const fallback = await db.select().from(businesses).orderBy(desc(businesses.rating), desc(businesses.reviewCount)).limit(10);
+    return fallback.map(b => ({ ...b, trendScore: b.rating / 10, sentimentAvg: 0.5, recentActivity: 0 }));
+  }
+
+  const businessIds = Array.from(scoreMap.keys());
+  const businessList = await db.select().from(businesses).where(sql`${businesses.id} IN (${sql.join(businessIds.map(id => sql`${id}`), sql`, `)})`);
+
+  const scored = businessList.map(b => {
+    const stats = scoreMap.get(b.id) ?? { reviewCount: 0, sentimentSum: 0, favCount30d: 0, favCount7d: 0 };
+    const avgSentiment = stats.reviewCount > 0 ? stats.sentimentSum / stats.reviewCount : 0.5;
+    const favMomentum = stats.favCount30d * 1.5 + stats.favCount7d * 1.0; // 7-day recency bonus
+    const reviewVelocity = stats.reviewCount * avgSentiment * 2;
+    const ratingBonus = (b.rating / 10) * 0.5;
+    const trendScore = favMomentum + reviewVelocity + ratingBonus;
+    return { ...b, trendScore, sentimentAvg: avgSentiment, recentActivity: stats.reviewCount + stats.favCount30d };
+  });
+
+  return scored.sort((a, b) => b.trendScore - a.trendScore).slice(0, 10);
 }
 
+/**
+ * Generate personalized recommendations for a user.
+ * Analyzes the user's favorite categories and suggests businesses
+ * in those same categories that they haven't already favorited.
+ * Falls back to top-rated businesses if the user has no favorites.
+ */
 export async function getRecommendationsForUser(userId: number): Promise<Business[]> {
   const db = await getDb();
   if (!db) return [];
@@ -381,6 +499,7 @@ export async function getRecommendationsForUser(userId: number): Promise<Busines
   return recommendations;
 }
 
+/** Get the top 10 highest-rated businesses, optionally filtered by category */
 export async function getTopRatedBusinesses(category?: string): Promise<Business[]> {
   const db = await getDb();
   if (!db) return [];
@@ -406,8 +525,9 @@ export async function getTopRatedBusinesses(category?: string): Promise<Business
   return allBusinesses.slice(0, 10);
 }
 
-// ===== DEALS FUNCTIONS =====
+// ==================== DEALS FUNCTIONS ====================
 
+/** Create a new promotional deal for a business (admin only) */
 export async function createDeal(deal: InsertDeal): Promise<Deal> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -451,6 +571,7 @@ export async function getBusinessDeals(businessId: number): Promise<Deal[]> {
   return result;
 }
 
+/** Get all active deals, joined with their associated business info */
 export async function getAllActiveDeals(): Promise<(Deal & { business: Business })[]> {
   const db = await getDb();
   if (!db) return [];
@@ -724,7 +845,10 @@ export async function updateChallengeProgress(userId: number, challengeId: numbe
   return { completed, badge };
 }
 
-// Check user stats and award badges if requirements are met
+/**
+ * Check user stats against all badge requirements and award any
+ * newly-earned badges. Called after reviews, visits, and favorites.
+ */
 export async function checkAndAwardBadges(userId: number) {
   const database = await getDb();
   if (!database) return;
@@ -884,6 +1008,7 @@ export async function regenerateWeeklyChallenges(): Promise<void> {
 
 // ==================== ANALYTICS FUNCTIONS ====================
 
+/** Convert a date range filter string into a start Date (or null for "all time") */
 function getDateRangeStart(range: "7d" | "30d" | "all"): Date | null {
   if (range === "all") return null;
   const d = new Date();
@@ -892,6 +1017,7 @@ function getDateRangeStart(range: "7d" | "30d" | "all"): Date | null {
   return d;
 }
 
+/** Compute aggregate metrics (review count, business count, favorites, avg rating) */
 export async function getAnalyticsSummary(dateRange: "7d" | "30d" | "all") {
   const db = await getDb();
   if (!db) return { totalReviews: 0, totalBusinesses: 0, totalFavorites: 0, avgRating: 0 };
@@ -920,6 +1046,7 @@ export async function getAnalyticsSummary(dateRange: "7d" | "30d" | "all") {
   };
 }
 
+/** Get review counts grouped by date (for the review activity chart) */
 export async function getReviewsByDateRange(dateRange: "7d" | "30d" | "all") {
   const db = await getDb();
   if (!db) return [];
@@ -939,6 +1066,7 @@ export async function getReviewsByDateRange(dateRange: "7d" | "30d" | "all") {
   return await query;
 }
 
+/** Get favorite counts grouped by business category (for the pie chart) */
 export async function getFavoritesByCategory() {
   const db = await getDb();
   if (!db) return [];
@@ -969,4 +1097,149 @@ export async function getFavoritesByCategory() {
     .map(([category, count]) => ({ category, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
+}
+
+/**
+ * Get a live community activity feed — recent reviews and favorites
+ * with business and user context, ordered newest-first.
+ * Used by the Community Feed UI to show what's happening right now.
+ */
+export async function getCommunityFeed(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Recent reviews with user + business info
+  const recentReviews = await db
+    .select({
+      id: reviews.id,
+      type: sql<string>`'review'`,
+      userId: reviews.userId,
+      businessId: reviews.businessId,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      createdAt: reviews.createdAt,
+      userName: users.name,
+      businessName: businesses.name,
+      businessImageUrl: businesses.imageUrl,
+      businessCategories: businesses.categories,
+      businessCity: businesses.city,
+    })
+    .from(reviews)
+    .innerJoin(users, eq(reviews.userId, users.id))
+    .innerJoin(businesses, eq(reviews.businessId, businesses.id))
+    .orderBy(desc(reviews.createdAt))
+    .limit(limit);
+
+  // Recent favorites with user + business info
+  const recentFavorites = await db
+    .select({
+      id: favorites.id,
+      type: sql<string>`'favorite'`,
+      userId: favorites.userId,
+      businessId: favorites.businessId,
+      rating: sql<number>`null`,
+      comment: sql<string>`null`,
+      createdAt: favorites.createdAt,
+      userName: users.name,
+      businessName: businesses.name,
+      businessImageUrl: businesses.imageUrl,
+      businessCategories: businesses.categories,
+      businessCity: businesses.city,
+    })
+    .from(favorites)
+    .innerJoin(users, eq(favorites.userId, users.id))
+    .innerJoin(businesses, eq(favorites.businessId, businesses.id))
+    .orderBy(desc(favorites.createdAt))
+    .limit(limit);
+
+  // Merge and sort by date, return most recent
+  const combined = [...recentReviews, ...recentFavorites]
+    .sort((a, b) => {
+      const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    })
+    .slice(0, limit);
+
+  return combined;
+}
+
+/**
+ * Get aggregate local impact metrics for the Impact Dashboard.
+ * These numbers tell the story of the community's support for local businesses.
+ */
+export async function getCommunityImpact() {
+  const db = await getDb();
+  if (!db) return {
+    totalReviews: 0, totalFavorites: 0, totalBusinessesSupported: 0,
+    totalUsers: 0, thisWeekReviews: 0, thisWeekFavorites: 0,
+    topSupportedCity: null as string | null, avgSentiment: 0,
+  };
+
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [totalReviewsRes, totalFavRes, totalBizRes, totalUsersRes, weekReviewsRes, weekFavRes] = await Promise.all([
+    db.select({ count: sql<number>`COUNT(*)` }).from(reviews),
+    db.select({ count: sql<number>`COUNT(*)` }).from(favorites),
+    db.select({ count: sql<number>`COUNT(DISTINCT ${favorites.businessId})` }).from(favorites),
+    db.select({ count: sql<number>`COUNT(*)` }).from(users),
+    db.select({ count: sql<number>`COUNT(*)` }).from(reviews).where(sql`${reviews.createdAt} >= ${weekAgo}`),
+    db.select({ count: sql<number>`COUNT(*)` }).from(favorites).where(sql`${favorites.createdAt} >= ${weekAgo}`),
+  ]);
+
+  // Compute average sentiment from recent review comments
+  const recentComments = await db
+    .select({ comment: reviews.comment })
+    .from(reviews)
+    .orderBy(desc(reviews.createdAt))
+    .limit(100);
+  const sentimentScores = recentComments.map(r => computeSentimentScore(r.comment));
+  const avgSentiment = sentimentScores.length > 0
+    ? sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length
+    : 0.5;
+
+  // Find the city with the most supported businesses
+  const cityResult = await db
+    .select({ city: businesses.city, count: sql<number>`COUNT(${favorites.id})` })
+    .from(favorites)
+    .innerJoin(businesses, eq(favorites.businessId, businesses.id))
+    .groupBy(businesses.city)
+    .orderBy(desc(sql<number>`COUNT(${favorites.id})`))
+    .limit(1);
+
+  return {
+    totalReviews: totalReviewsRes[0]?.count ?? 0,
+    totalFavorites: totalFavRes[0]?.count ?? 0,
+    totalBusinessesSupported: totalBizRes[0]?.count ?? 0,
+    totalUsers: totalUsersRes[0]?.count ?? 0,
+    thisWeekReviews: weekReviewsRes[0]?.count ?? 0,
+    thisWeekFavorites: weekFavRes[0]?.count ?? 0,
+    topSupportedCity: cityResult[0]?.city ?? null,
+    avgSentiment: Math.round(avgSentiment * 100),
+  };
+}
+
+/**
+ * Get recent per-business activity counts (how many people favorited
+ * a given business in the last 7 days). Used for "X people saved this recently" UI.
+ */
+export async function getRecentFavoriteCountsForBusinesses(businessIds: number[]): Promise<Map<number, number>> {
+  const db = await getDb();
+  if (!db || businessIds.length === 0) return new Map();
+
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  // Use OR-chain instead of IN() to avoid complex nested sql template literals
+  const allRows = await db
+    .select({ businessId: favorites.businessId, count: sql<number>`COUNT(*)` })
+    .from(favorites)
+    .where(and(
+      inArray(favorites.businessId, businessIds),
+      sql`${favorites.createdAt} >= ${weekAgo}`
+    ))
+    .groupBy(favorites.businessId);
+
+  const map = new Map<number, number>();
+  for (const row of allRows) if (row.businessId) map.set(row.businessId, row.count);
+  return map;
 }

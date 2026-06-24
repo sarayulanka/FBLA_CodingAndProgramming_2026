@@ -12,8 +12,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { APP_TITLE, getLoginUrl } from "@/const";
+import { APP_TITLE } from "@/const";
 import { HelpPanel } from "@/components/HelpPanel";
+import { AuthModal } from "@/components/AuthModal";
 import { useSearchContext } from "@/contexts/SearchContext";
 import {
   Building2, TrendingUp, Tag, MessageSquare, Heart, BarChart3,
@@ -35,6 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { nearbyBusinesses } = useSearchContext();
   const [location] = useLocation();
   const [showHelp, setShowHelp] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => window.location.reload(),
@@ -112,8 +114,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button asChild className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/25 btn-shimmer">
-                  <a href={getLoginUrl()}>Sign In</a>
+                <Button onClick={() => setShowAuth(true)} className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/25 btn-shimmer">
+                  Sign In
                 </Button>
               )}
             </div>
@@ -157,12 +159,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 AI Help
               </button>
               {!isAuthenticated && (
-                <a
-                  href={getLoginUrl()}
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-violet-600 to-indigo-600 mt-2"
+                <button
+                  onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }}
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-violet-600 to-indigo-600 mt-2 w-full"
                 >
                   Sign In
-                </a>
+                </button>
               )}
             </div>
           )}
@@ -174,6 +176,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Help Panel */}
       <HelpPanel open={showHelp} onClose={() => setShowHelp(false)} nearbyBusinesses={nearbyBusinesses} />
+
+      {/* Auth Modal */}
+      <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
     </div>
   );
 }

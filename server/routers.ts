@@ -13,8 +13,9 @@
  *   - analytics   — community activity insights
  */
 
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
@@ -106,6 +107,49 @@ export const appRouter = router({
   auth: router({
     /** Returns the currently logged-in user (or null if unauthenticated) */
     me: publicProcedure.query(opts => opts.ctx.user),
+
+    /** Register a new local account */
+    register: publicProcedure
+      .input(z.object({
+        name: z.string().min(1).max(100),
+        email: z.string().email(),
+        password: z.string().min(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { pbkdf2Sync, randomBytes } = await import("crypto");
+        const existing = await db.getUserByEmail(input.email);
+        if (existing) throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists." });
+        const salt = randomBytes(16).toString("hex");
+        const hash = pbkdf2Sync(input.password, salt, 100000, 64, "sha512").toString("hex");
+        const passwordHash = `${salt}:${hash}`;
+        const openId = `local_${randomBytes(8).toString("hex")}`;
+        await db.upsertUser({ openId, name: input.name, email: input.email, loginMethod: "local", passwordHash, lastSignedIn: new Date() });
+        const token = await sdk.createSessionToken(openId, { name: input.name, expiresInMs: ONE_YEAR_MS });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true };
+      }),
+
+    /** Login with email + password */
+    login: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { pbkdf2Sync } = await import("crypto");
+        const user = await db.getUserByEmail(input.email);
+        if (!user?.passwordHash) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
+        const [salt, storedHash] = user.passwordHash.split(":");
+        const hash = pbkdf2Sync(input.password, salt, 100000, 64, "sha512").toString("hex");
+        if (hash !== storedHash) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
+        await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
+        const token = await sdk.createSessionToken(user.openId, { name: user.name || "", expiresInMs: ONE_YEAR_MS });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true };
+      }),
+
     /** Clears the session cookie and logs the user out */
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -232,10 +276,8 @@ export const appRouter = router({
 
         try {
           const { BedrockRuntimeClient, InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
-          const { fromIni } = await import("@aws-sdk/credential-provider-ini");
           const client = new BedrockRuntimeClient({
             region: process.env.AWS_REGION || "us-east-1",
-            credentials: fromIni({ profile: "sarayu" }),
           });
           const payload = {
             anthropic_version: "bedrock-2023-05-31",
@@ -244,7 +286,7 @@ export const appRouter = router({
             messages: [{ role: "user", content: `Summarize these reviews:\n${reviewSnippets}` }],
           };
           const command = new InvokeModelCommand({
-            modelId: "anthropic.claude-3-haiku-20240307-v1:0",
+            modelId: (() => { const m = process.env.BEDROCK_MODEL_ID || "us.anthropic.claude-3-5-haiku-20241022-v1:0"; return m.startsWith("us.") || m.startsWith("eu.") || m.startsWith("ap.") ? m : `us.${m}`; })(),
             contentType: "application/json",
             accept: "application/json",
             body: JSON.stringify(payload),
@@ -559,11 +601,8 @@ export const appRouter = router({
         // Use AWS Bedrock for intelligent Q&A
         const { BedrockRuntimeClient, InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
 
-        const { fromIni } = await import("@aws-sdk/credential-provider-ini");
-
         const client = new BedrockRuntimeClient({
           region: process.env.AWS_REGION || "us-east-1",
-          credentials: fromIni({ profile: "sarayu" }),
         });
 
         // Build the system prompt dynamically from actual app state
@@ -594,16 +633,20 @@ export const appRouter = router({
           personalizedSection += `- Coordinates: ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}${loc.city ? ` (${loc.city})` : ""}\n`;
         }
         if (ctx?.nearbyBusinesses && ctx.nearbyBusinesses.length > 0) {
-          personalizedSection += `\n## Nearby Businesses (from their current search)\n`;
-          for (const b of ctx.nearbyBusinesses) {
+          personalizedSection += `\n## Nearby Businesses (sorted closest first)\n`;
+          const sorted = [...ctx.nearbyBusinesses].sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
+          for (const b of sorted) {
             const cats = b.categories ? (() => { try { return JSON.parse(b.categories!).map((c: any) => c.title).join(", "); } catch { return b.categories; } })() : "";
-            personalizedSection += `- **${b.name}** — ${(b.rating / 10).toFixed(1)}★${b.distance ? `, ${b.distance.toFixed(1)}mi away` : ""}${cats ? `, ${cats}` : ""}${b.hasDeals ? " 🏷️ has deals" : ""}\n`;
+            personalizedSection += `- ${b.name} — ${(b.rating / 10).toFixed(1)} stars${b.distance ? `, ${b.distance.toFixed(1)} miles away` : ""}${cats ? `, ${cats}` : ""}${b.hasDeals ? ", has deals" : ""}\n`;
           }
-          personalizedSection += `\nYou CAN recommend these specific businesses when the user asks for suggestions — they are real, local businesses near the user right now.\n`;
+          personalizedSection += `\nSTRICT RULE: You may ONLY mention businesses that appear in this exact list above. Do not invent, guess, or add any business names that are not listed here. If you are not 100% certain a business name came from this list, do not mention it. When making recommendations, pick 2-3 from this list only.\n`;
         }
 
+        const hasNearbyBusinesses = ctx?.nearbyBusinesses && ctx.nearbyBusinesses.length > 0;
         const personalizedBlock = personalizedSection ? "\n" + personalizedSection : "";
-        const systemPrompt = `You are BizBloom's helpful assistant. BizBloom is a web platform for discovering and supporting local small businesses. Answer ONLY based on the information below — do not guess or invent features.${personalizedBlock}
+        const systemPrompt = `You are BizBloom's helpful assistant. BizBloom is a web platform for discovering and supporting local small businesses. Answer ONLY based on the information below — do not guess or invent features.
+
+CRITICAL RULE: If the user asks what's good nearby, what to visit, or for recommendations AND there are no nearby businesses listed below, say: "Do a quick search on the Home page first — once you search I can see your results and give you specific picks!" Do NOT give navigation steps.${hasNearbyBusinesses ? " Since search results ARE available below, give specific business recommendations by name — do not tell them to search." : ""}${personalizedBlock}
 
 ## Pages & Navigation (top nav bar)
 - **Home** ("/") — Main page with search, hero section, and business results
@@ -649,9 +692,11 @@ Active challenges: ${activeChallenges.length > 0 ? activeChallenges.map(c => '"'
 Writing reviews, saving favorites, viewing badges/challenges, and personalized recommendations.
 
 IMPORTANT RULES:
-- Keep responses SHORT — 2-4 sentences max. Use bullet points only when listing steps.
-- Never write long paragraphs. Get straight to the point.
-- Be friendly but brief. If asked about something outside BizBloom, politely say you can only help with the platform.`;
+- Write like a friendly, casual person texting — NOT like a formatted document.
+- NEVER use bullet points, dashes, asterisks, bold, or any markdown formatting. No "•", no "**", no "-" lists. Ever.
+- Keep it to 2-3 short sentences max. Conversational, warm, direct.
+- When recommending businesses, weave them naturally into a sentence. Example: "Grace's Thai Kitchen is probably your best bet — really solid ratings and only half a mile away. Myanmar Thai is great too if you're feeling adventurous."
+- If asked about something outside BizBloom, politely say you can only help with the platform.`;
 
         // Filter out system messages (Bedrock only accepts user/assistant roles)
         const conversationMessages = input.messages
@@ -671,7 +716,7 @@ IMPORTANT RULES:
           };
 
           const command = new InvokeModelCommand({
-            modelId: "anthropic.claude-3-haiku-20240307-v1:0",
+            modelId: (() => { const m = process.env.BEDROCK_MODEL_ID || "us.anthropic.claude-3-5-haiku-20241022-v1:0"; return m.startsWith("us.") || m.startsWith("eu.") || m.startsWith("ap.") ? m : `us.${m}`; })(),
             contentType: "application/json",
             accept: "application/json",
             body: JSON.stringify(payload),
@@ -679,7 +724,16 @@ IMPORTANT RULES:
 
           const response = await client.send(command);
           const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-          const reply = responseBody.content?.[0]?.text ?? "I couldn\'t generate a response. Please try again.";
+          const raw = responseBody.content?.[0]?.text ?? "I couldn't generate a response. Please try again.";
+
+          // Strip markdown so responses are always plain conversational text
+          const reply = raw
+            .replace(/\*\*(.*?)\*\*/g, "$1")
+            .replace(/\*(.*?)\*/g, "$1")
+            .replace(/^[\s•\-–]+/gm, "")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+
           return { reply };
         } catch (error) {
           console.error("Bedrock error:", error);

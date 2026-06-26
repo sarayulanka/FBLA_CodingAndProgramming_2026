@@ -22,6 +22,7 @@ import Trending from "./pages/Trending";
 import Badges from "./pages/Badges";
 import Analytics from "./pages/Analytics";
 import Impact from "./pages/Impact";
+import Plan from "./pages/Plan";
 
 /**
  * Router — declares all client-side routes inside the shared Layout shell.
@@ -40,6 +41,7 @@ function Router() {
         <Route path={"/badges"} component={Badges} />
         <Route path={"/analytics"} component={Analytics} />
         <Route path={"/impact"} component={Impact} />
+        <Route path={"/plan"} component={Plan} />
         <Route path={"/404"} component={NotFound} />
         {/* Catch-all: any unmatched path renders the 404 page */}
         <Route component={NotFound} />

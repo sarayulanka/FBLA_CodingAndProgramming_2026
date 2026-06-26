@@ -32,7 +32,11 @@ function sentimentLabel(score: number) {
 /** Renders a single activity feed item (review or favorite) */
 function FeedItem({ item }: { item: any }) {
   const isReview = item.type === "review";
-  const createdAt = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt);
+  // SQLite stores timestamps as seconds; Drizzle multiplies by 1000 on read.
+  // If the stored value was already in ms, we end up 1000x too large — detect
+  // and correct by checking if the resulting year is absurd (> year 3000).
+  const rawDate = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt);
+  const createdAt = rawDate.getFullYear() > 3000 ? new Date(rawDate.getTime() / 1000) : rawDate;
   const timeAgo = formatDistanceToNow(createdAt, { addSuffix: true });
 
   let categories: string[] = [];
@@ -91,8 +95,8 @@ function FeedItem({ item }: { item: any }) {
 }
 
 export default function Impact() {
-  const { data: impact, isLoading: impactLoading } = trpc.analytics.communityImpact.useQuery();
-  const { data: feed, isLoading: feedLoading } = trpc.analytics.communityFeed.useQuery({ limit: 30 });
+  const { data: impact, isLoading: impactLoading } = trpc.analytics.communityImpact.useQuery(undefined, { refetchInterval: 10000 });
+  const { data: feed, isLoading: feedLoading } = trpc.analytics.communityFeed.useQuery({ limit: 30 }, { refetchInterval: 10000 });
 
   const sentiment = impact ? sentimentLabel(impact.avgSentiment) : null;
 

@@ -237,7 +237,7 @@ export default function Badges() {
                   <h3 className="font-bold text-sm mb-1">{badge.name}</h3>
                   <p className="text-xs text-gray-500 mb-2">{badge.description}</p>
                   <p className="text-xs text-violet-500 font-medium">
-                    Earned {new Date(badge.earnedAt).toLocaleDateString()}
+                    Earned {(() => { const d = new Date(badge.earnedAt); return (d.getFullYear() > 3000 ? new Date(d.getTime() / 1000) : d).toLocaleDateString(); })()}
                   </p>
                 </CardContent>
               </Card>

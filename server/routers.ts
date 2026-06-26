@@ -757,6 +757,149 @@ IMPORTANT RULES:
       }),
   }),
 
+  // ==================== AI PLAN MY DAY ====================
+  ai: router({
+    planDay: publicProcedure
+      .input(z.object({
+        prompt: z.string().min(1).max(500),
+        location: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { BedrockRuntimeClient, InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
+        const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
+        const modelId = (() => {
+          const m = process.env.BEDROCK_MODEL_ID || "us.anthropic.claude-3-5-haiku-20241022-v1:0";
+          return m.startsWith("us.") || m.startsWith("eu.") || m.startsWith("ap.") ? m : `us.${m}`;
+        })();
+
+        const callBedrock = async (userMsg: string, system: string, maxTokens = 1000) => {
+          const cmd = new InvokeModelCommand({
+            modelId,
+            contentType: "application/json",
+            accept: "application/json",
+            body: JSON.stringify({
+              anthropic_version: "bedrock-2023-05-31",
+              max_tokens: maxTokens,
+              system,
+              messages: [{ role: "user", content: userMsg }],
+            }),
+          });
+          const res = await client.send(cmd);
+          const body = JSON.parse(new TextDecoder().decode(res.body));
+          return body.content?.[0]?.text ?? "";
+        };
+
+        // Step 1 — Parse intent into structured slots
+        const parseRaw = await callBedrock(
+          `User request: "${input.prompt}"`,
+          `You are a day planner. Parse the request and return ONLY valid JSON, no explanation:
+{
+  "locationString": "city and state if mentioned, else empty string",
+  "title": "A fun 5-7 word title for this day",
+  "slots": [
+    { "time": "9:00 AM", "duration": "1 hour", "category": "breakfast", "searchTerm": "brunch", "emoji": "☀️" }
+  ]
+}
+Include 4-6 slots suitable for the request. Use categories: breakfast, coffee, lunch, shopping, activity, dinner, drinks, dessert.
+Pick search terms that will find good Yelp results (e.g. "tacos", "wine bar", "bookstore", "spa").`,
+          600
+        );
+
+        let parsed: { locationString: string; title: string; slots: Array<{ time: string; duration: string; category: string; searchTerm: string; emoji: string }> };
+        try {
+          const match = parseRaw.match(/\{[\s\S]*\}/);
+          parsed = JSON.parse(match?.[0] ?? parseRaw);
+        } catch {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't understand that request — try describing your day differently!" });
+        }
+
+        // Step 2 — Parallel Yelp searches for each slot
+        // Priority: explicit input.location > AI-parsed location from prompt > GPS coords
+        const locationStr = input.location || parsed.locationString;
+        const useCoords = !locationStr && input.latitude && input.longitude;
+
+        const slotResults = await Promise.all(
+          parsed.slots.map(async (slot) => {
+            try {
+              const params: Parameters<typeof yelp.searchBusinesses>[0] = {
+                term: slot.searchTerm,
+                limit: 5,
+                sort_by: "rating",
+                ...(useCoords
+                  ? { latitude: input.latitude!, longitude: input.longitude! }
+                  : locationStr ? { location: locationStr } : {}),
+              };
+              const result = await yelp.searchBusinesses(params);
+              return { slot, businesses: result.businesses.slice(0, 5) };
+            } catch {
+              return { slot, businesses: [] };
+            }
+          })
+        );
+
+        // Step 3 — Compose itinerary: pick best business per slot + write a note
+        const businessContext = slotResults.map(({ slot, businesses }) => {
+          const list = businesses.length
+            ? businesses.map(b => `  - ${b.name} (${b.rating}★, ${b.price ?? "$$"}, ${b.location?.address1 ?? ""})`).join("\n")
+            : "  - No businesses found";
+          return `${slot.time} — ${slot.category}:\n${list}`;
+        }).join("\n\n");
+
+        const composeRaw = await callBedrock(
+          `User request: "${input.prompt}"\n\nAvailable businesses by time slot:\n${businessContext}`,
+          `You are a local day planner. Pick the best business for each time slot and write a warm, one-sentence reason why it fits.
+Return ONLY valid JSON, no explanation:
+{
+  "stops": [
+    { "businessName": "exact name from list", "note": "one casual, enthusiastic sentence about why this place is perfect" }
+  ]
+}
+IMPORTANT: Only use business names that appear exactly in the list above. One entry per time slot in order.`,
+          800
+        );
+
+        let composed: { stops: Array<{ businessName: string; note: string }> };
+        try {
+          const match = composeRaw.match(/\{[\s\S]*\}/);
+          composed = JSON.parse(match?.[0] ?? composeRaw);
+        } catch {
+          composed = { stops: slotResults.map(({ businesses }) => ({ businessName: businesses[0]?.name ?? "", note: "A great local pick for this part of your day." })) };
+        }
+
+        // Step 4 — Assemble final response
+        const stops = parsed.slots.map((slot, i) => {
+          const pick = composed.stops[i];
+          const biz = slotResults[i].businesses.find(b => b.name === pick?.businessName) ?? slotResults[i].businesses[0];
+          if (!biz) return null;
+          return {
+            time: slot.time,
+            duration: slot.duration,
+            category: slot.category,
+            emoji: slot.emoji,
+            note: pick?.note ?? "A great local pick!",
+            business: {
+              name: biz.name,
+              yelpId: biz.id,
+              rating: biz.rating,
+              reviewCount: biz.review_count,
+              price: biz.price ?? null,
+              address: biz.location?.address1 ?? null,
+              city: biz.location?.city ?? null,
+              phone: biz.display_phone ?? null,
+              imageUrl: biz.image_url ?? null,
+              categories: biz.categories?.map((c: any) => c.title).join(", ") ?? "",
+              latitude: biz.coordinates?.latitude ?? null,
+              longitude: biz.coordinates?.longitude ?? null,
+            },
+          };
+        }).filter(Boolean);
+
+        return { title: parsed.title, location: locationStr || "your area", stops };
+      }),
+  }),
+
   // ==================== ANALYTICS ====================
   analytics: router({
     summary: publicProcedure

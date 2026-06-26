@@ -16,12 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { TrendingUp, Star, MapPin, Sparkles, Trophy } from "lucide-react";
 import { useLocation } from "wouter";
+import { useState } from "react";
 
 export default function Trending() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: trending, isLoading: trendingLoading } = trpc.business.trending.useQuery();
   const { data: recommendations, isLoading: recommendationsLoading } = trpc.business.recommendations.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -46,12 +46,8 @@ export default function Trending() {
 
       {/* Content */}
       <div className="container py-12">
-        <Tabs defaultValue="trending" className="w-full">
-          <TabsList className="grid w-full max-w-lg mx-auto grid-cols-3 mb-10 p-1.5 bg-violet-50 rounded-2xl h-auto">
-            <TabsTrigger value="trending" className="rounded-xl py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 font-medium">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Trending
-            </TabsTrigger>
+        <Tabs defaultValue="recommendations" className="w-full">
+          <TabsList className="grid w-full max-w-sm mx-auto grid-cols-2 mb-10 p-1.5 bg-violet-50 rounded-2xl h-auto">
             <TabsTrigger value="recommendations" disabled={!isAuthenticated} className="rounded-xl py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 font-medium">
               <Sparkles className="w-4 h-4 mr-2" />
               For You
@@ -61,27 +57,6 @@ export default function Trending() {
               Top Rated
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="trending">
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Trending Now</h2>
-              <p className="text-gray-500">Most popular businesses based on recent community activity</p>
-            </div>
-
-            {trendingLoading && <GridSkeleton />}
-
-            {!trendingLoading && trending && trending.length === 0 && (
-              <EmptyState icon={TrendingUp} title="No trending businesses yet" description="Start exploring and favoriting businesses to see trends!" />
-            )}
-
-            {!trendingLoading && trending && trending.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {trending.map((business, index) => (
-                  <BusinessCard key={business.id} business={business} rank={index + 1} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
 
           <TabsContent value="recommendations">
             <div className="mb-8">
@@ -173,8 +148,11 @@ function EmptyState({ icon: Icon, title, description }: { icon: any; title: stri
 
 /** Business card with optional rank badge and trophy icon for leaderboard */
 function BusinessCard({ business, rank, showTrophy }: { business: any; rank?: number; showTrophy?: boolean }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const categories = business.categories ? JSON.parse(business.categories) : [];
   const rating = business.rating / 10;
+
+  if (!business.imageUrl || imgFailed) return null;
 
   return (
     <Card className="card-hover overflow-hidden relative rounded-2xl border-0 shadow-md group">
@@ -191,7 +169,8 @@ function BusinessCard({ business, rank, showTrophy }: { business: any; rank?: nu
 
       <div className="overflow-hidden">
         <img
-          src={business.imageUrl || "/placeholder-business.jpg"}
+          src={business.imageUrl}
+            onError={() => setImgFailed(true)}
           alt={business.name}
           className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
         />

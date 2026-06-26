@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield, List, Map, Sparkles } from "lucide-react";
+import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield, List, Map, Sparkles, Mic, MicOff } from "lucide-react";
 import { Link } from "wouter";
 import { MapView } from "@/components/Map";
 import { useSearchContext } from "@/contexts/SearchContext";
@@ -103,8 +103,10 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [pendingSearch, setPendingSearch] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [isListening, setIsListening] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -234,6 +236,35 @@ export default function Home() {
     }
   };
 
+  const startVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice search isn't supported in this browser. Try Chrome.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => { setIsListening(false); toast.error("Couldn't hear that — try again."); };
+    recognition.onresult = (e: any) => {
+      const transcript = e.results[0][0].transcript;
+      setSearchTerm(transcript);
+      setShowSearch(true);
+      setTimeout(() => handleSearch(), 100);
+    };
+
+    recognition.start();
+  };
+
   return (
     <div>
       {/* Hero Section */}
@@ -265,7 +296,7 @@ export default function Home() {
             {/* Search Box - Glassmorphism */}
             <div className="glass-dark rounded-2xl p-6 md:p-8 mt-4 animate-slide-up-delayed-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
+                <div className="relative">
                   <label htmlFor="search-term" className="sr-only">Search term</label>
                   <Input
                     id="search-term"
@@ -273,9 +304,21 @@ export default function Home() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-12 rounded-xl focus:ring-violet-400 focus:border-violet-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-12 rounded-xl focus:ring-violet-400 focus:border-violet-400 pr-12"
                     aria-label="Search for businesses"
                   />
+                  <button
+                    type="button"
+                    onClick={startVoiceSearch}
+                    title="Search by voice"
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      isListening
+                        ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50"
+                        : "text-gray-400 hover:text-white hover:bg-white/20"
+                    }`}
+                  >
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </button>
                 </div>
                 <div className="relative">
                   <label htmlFor="search-location" className="sr-only">Location</label>

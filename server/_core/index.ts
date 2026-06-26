@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { seedVenueCity } from "../seed-venue";
+import { seedDeals } from "../seed-deals";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -62,6 +63,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Pre-seed venue city data in background so demo works without live WiFi
     seedVenueCity().catch(() => {});
+    // Seed sample deals (runs only once; skips if deals already exist)
+    seedDeals().catch(() => {});
   });
 }
 

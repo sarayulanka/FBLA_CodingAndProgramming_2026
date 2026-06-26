@@ -1,6 +1,6 @@
 # BizBloom
 
-**FBLA Coding and Programming Event 2024-2025**
+**FBLA Coding and Programming Event 2025-2026**
 
 A modern web application designed to help users discover and support small businesses in their local community. Built with React, TypeScript, tRPC, and integrated with the Yelp Fusion API for real-time business data.
 
@@ -12,7 +12,7 @@ A modern web application designed to help users discover and support small busin
 - **Geolocation Support**: Automatically detects user location for personalized search results
 - **Advanced Filtering**: Filter businesses by category, sort by rating, review count, or distance
 - **Business Details**: View comprehensive information including photos, ratings, reviews, contact info, and hours
-- **User Authentication**: Secure login system powered by Manus OAuth
+- **User Authentication**: Secure login system with OAuth 2.0 and session-based authentication
 
 ### User Features
 
@@ -79,7 +79,7 @@ bizbloom/
 
 ### Users Table
 - Stores user authentication and profile information
-- Linked to Manus OAuth system
+- Linked to the OAuth authentication system
 
 ### Businesses Table
 - Caches Yelp business data for performance
@@ -271,9 +271,9 @@ This project was created for the FBLA Coding and Programming event.
 
 - **Yelp Fusion API**: Business data provider
 - **shadcn/ui**: UI component library
-- **Manus Platform**: Hosting and authentication
+- **Node.js + Express**: Server hosting and authentication
 - **Tailwind CSS**: Styling framework
 
 ---
 
-**Built with ❤️ for FBLA 2024-2025**
+**Built with ❤️ for FBLA 2025-2026**

@@ -654,8 +654,7 @@ CRITICAL RULE: If the user asks what's good nearby, what to visit, or for recomm
 - **Deals** ("/deals") — Special offers and coupons posted by admins
 - **Reviews** ("/community-reviews") — Browse all community reviews, searchable by business name, user, or content
 - **Favorites** ("/favorites") — Saved businesses (sign-in required)
-- **Impact** ("/impact") — Local Impact Dashboard showing community stats, live activity feed, and sentiment gauge
-- **Analytics** ("/analytics") — Community activity charts with date filters (7d, 30d, all time), category breakdowns, top-rated table, and CSV export
+- **Impact** ("/impact") — Local Impact Dashboard showing community stats, live activity feed, sentiment gauge, and community activity insights with date filters (7d, 30d, all time)
 - **Help** — This chat panel, accessible from the nav bar
 
 ## How to Search

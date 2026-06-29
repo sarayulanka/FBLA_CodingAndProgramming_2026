@@ -80,13 +80,13 @@ export default function CommunityReviews() {
 
         {!isLoading && filteredReviews && filteredReviews.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-20 h-20 mx-auto bg-violet-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 mx-auto bg-violet-500/20 rounded-full flex items-center justify-center mb-4">
               <MessageSquare className="w-10 h-10 text-violet-400" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <h3 className="text-2xl font-bold text-white mb-2">
               {searchTerm ? "No reviews found" : "No reviews yet"}
             </h3>
-            <p className="text-gray-500">
+            <p className="text-white/55">
               {searchTerm ? "Try adjusting your search terms" : "Be the first to write a review!"}
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function CommunityReviews() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
                 <MessageSquare className="w-4 h-4 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-white">
                 {filteredReviews.length} {filteredReviews.length === 1 ? "Review" : "Reviews"}
               </h2>
             </div>
@@ -118,47 +118,43 @@ function ReviewCard({ review }: { review: any }) {
   const categories = review.businessCategories ? JSON.parse(review.businessCategories) : [];
 
   return (
-    <Card className="card-hover rounded-2xl border-0 shadow-md overflow-hidden">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-2">{review.businessName}</CardTitle>
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {categories.slice(0, 2).map((cat: any) => (
-                <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-50 text-violet-700 border-violet-100">
-                  {cat.title}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-xl">
-            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-            <span className="font-bold text-amber-700">{review.rating}</span>
+    <div className="glass-card rounded-2xl overflow-hidden p-5">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-white mb-2">{review.businessName}</h3>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {categories.slice(0, 2).map((cat: any) => (
+              <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-500/20 text-violet-300 border-violet-500/20">
+                {cat.title}
+              </Badge>
+            ))}
           </div>
         </div>
+        <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-xl">
+          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+          <span className="font-bold text-amber-300">{review.rating}</span>
+        </div>
+      </div>
 
-        <CardDescription>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
-              {review.userName?.charAt(0).toUpperCase() || "A"}
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">{review.userName || "Anonymous"}</p>
-              <p className="text-xs text-gray-400">
-                {new Date(review.createdAt).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
-          </div>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+          {review.userName?.charAt(0).toUpperCase() || "A"}
+        </div>
+        <div>
+          <p className="font-semibold text-white">{review.userName || "Anonymous"}</p>
+          <p className="text-xs text-white/40">
+            {new Date(review.createdAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+      </div>
 
-          {review.comment && (
-            <p className="text-gray-600 leading-relaxed">{review.comment}</p>
-          )}
-        </CardDescription>
-      </CardHeader>
-    </Card>
+      {review.comment && (
+        <p className="text-white/60 leading-relaxed">{review.comment}</p>
+      )}
+    </div>
   );
 }

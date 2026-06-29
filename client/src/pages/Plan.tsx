@@ -139,7 +139,7 @@ export default function Plan() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-screen">
 
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-violet-900 via-indigo-900 to-purple-900 py-20">
@@ -209,12 +209,12 @@ export default function Plan() {
               </div>
             </div>
             <div>
-              <p className="text-xl font-semibold text-gray-800">{LOADING_STEPS[loadingStep]}</p>
-              <p className="text-gray-400 text-sm mt-1">This takes about 10–15 seconds</p>
+              <p className="text-xl font-semibold text-white">{LOADING_STEPS[loadingStep]}</p>
+              <p className="text-white/50 text-sm mt-1">This takes about 10–15 seconds</p>
             </div>
             <div className="flex gap-2">
               {LOADING_STEPS.map((_, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === loadingStep ? "w-8 bg-violet-500" : "w-2 bg-gray-200"}`} />
+                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === loadingStep ? "w-8 bg-violet-500" : "w-2 bg-white/20"}`} />
               ))}
             </div>
           </div>
@@ -228,8 +228,8 @@ export default function Plan() {
           {/* Header */}
           <div className="flex items-center justify-between mb-10">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">{itinerary.title}</h2>
-              <p className="text-gray-500 mt-1 flex items-center gap-1.5">
+              <h2 className="text-3xl font-bold text-white">{itinerary.title}</h2>
+              <p className="text-white/55 mt-1 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4" />{itinerary.location}
                 <span className="mx-2">·</span>
                 <Calendar className="w-4 h-4" />{itinerary.stops.length} stops
@@ -257,7 +257,7 @@ export default function Plan() {
           {/* Timeline */}
           <div className="relative">
             {/* Vertical line */}
-            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gradient-to-b from-violet-200 via-indigo-200 to-pink-200" />
+            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gradient-to-b from-violet-500/40 via-indigo-500/40 to-pink-500/40" />
 
             <div className="space-y-6">
               {itinerary.stops.map((stop, idx) => {
@@ -272,7 +272,7 @@ export default function Plan() {
                     </div>
 
                     {/* Card */}
-                    <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="flex-1 glass-card rounded-2xl overflow-hidden">
                       {/* Business image */}
                       {stop.business.imageUrl && (
                         <div className="relative h-40 overflow-hidden">
@@ -295,7 +295,7 @@ export default function Plan() {
                               if (!isAuthenticated) { toast.error("Sign in to save"); return; }
                               if (!isSaved) addFavoriteMutation.mutate({ yelpId: stop.business.yelpId });
                             }}
-                            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isSaved ? "bg-rose-500 text-white" : "bg-white/90 text-gray-600 hover:bg-white"}`}
+                            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isSaved ? "bg-rose-500 text-white" : "bg-black/40 text-white/80 hover:bg-black/60"}`}
                           >
                             <Heart className={`w-4 h-4 ${isSaved ? "fill-white" : ""}`} />
                           </button>
@@ -314,23 +314,23 @@ export default function Plan() {
                         {/* Business name + meta */}
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h3 className="font-bold text-gray-900 text-lg leading-tight">{stop.business.name}</h3>
-                            <p className="text-sm text-gray-400 mt-0.5">{stop.business.categories}</p>
+                            <h3 className="font-bold text-white text-lg leading-tight">{stop.business.name}</h3>
+                            <p className="text-sm text-white/45 mt-0.5">{stop.business.categories}</p>
                           </div>
-                          <div className="flex items-center gap-1 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 flex-shrink-0">
-                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                            <span className="text-sm font-semibold text-amber-700">{stop.business.rating}</span>
-                            {stop.business.price && <span className="text-xs text-gray-400 ml-1">{stop.business.price}</span>}
+                          <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/20 rounded-lg px-2 py-1 flex-shrink-0">
+                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                            <span className="text-sm font-semibold text-amber-300">{stop.business.rating}</span>
+                            {stop.business.price && <span className="text-xs text-white/40 ml-1">{stop.business.price}</span>}
                           </div>
                         </div>
 
                         {/* AI note */}
-                        <p className="mt-3 text-gray-600 text-sm leading-relaxed italic border-l-2 border-violet-200 pl-3">
+                        <p className="mt-3 text-white/55 text-sm leading-relaxed italic border-l-2 border-violet-500/40 pl-3">
                           "{stop.note}"
                         </p>
 
                         {/* Address + phone */}
-                        <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs text-white/40">
                           {stop.business.address && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
@@ -353,10 +353,10 @@ export default function Plan() {
           </div>
 
           {/* Bottom CTA */}
-          <div className="mt-12 text-center p-8 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100">
-            <Sparkles className="w-8 h-8 text-violet-500 mx-auto mb-3" />
-            <h3 className="font-bold text-gray-900 text-lg mb-1">Love your day plan?</h3>
-            <p className="text-gray-500 text-sm mb-4">Save all these spots to your favorites so you can find them later.</p>
+          <div className="mt-12 text-center p-8 glass-card rounded-2xl">
+            <Sparkles className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+            <h3 className="font-bold text-white text-lg mb-1">Love your day plan?</h3>
+            <p className="text-white/55 text-sm mb-4">Save all these spots to your favorites so you can find them later.</p>
             <Button onClick={handleSaveAll} className="gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
               <Heart className="w-4 h-4" /> Save All to Favorites
             </Button>
@@ -376,11 +376,11 @@ export default function Plan() {
               <button
                 key={card.title}
                 onClick={() => { setPrompt(card.example); textareaRef.current?.focus(); }}
-                className="text-left p-5 rounded-2xl border-2 border-dashed border-gray-200 hover:border-violet-300 hover:bg-violet-50 transition-all group"
+                className="text-left p-5 rounded-2xl border-2 border-dashed border-white/15 hover:border-violet-400/50 transition-all group glass-card"
               >
                 <div className="text-3xl mb-3">{card.emoji}</div>
-                <div className="font-semibold text-gray-800 group-hover:text-violet-700 mb-1">{card.title}</div>
-                <div className="text-xs text-gray-400 leading-relaxed">"{card.example}"</div>
+                <div className="font-semibold text-white group-hover:text-violet-300 mb-1">{card.title}</div>
+                <div className="text-xs text-white/45 leading-relaxed">"{card.example}"</div>
                 <div className="flex items-center gap-1 text-violet-500 text-xs font-medium mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   Try this <ChevronRight className="w-3 h-3" />
                 </div>

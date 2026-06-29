@@ -75,8 +75,8 @@ export default function Badges() {
         <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-500/25 rotate-3">
           <Trophy className="h-10 w-10 text-white" />
         </div>
-        <h1 className="text-3xl font-extrabold mb-2">Sign In Required</h1>
-        <p className="text-gray-500 mb-6 text-center max-w-md">
+        <h1 className="text-3xl font-extrabold mb-2 text-white">Sign In Required</h1>
+        <p className="text-white/55 mb-6 text-center max-w-md">
           Sign in to earn badges, complete challenges, and track your progress!
         </p>
         <Button asChild size="lg" className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg shadow-violet-500/25">
@@ -118,14 +118,12 @@ export default function Badges() {
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
           {STAT_ITEMS.map((stat) => (
-            <Card key={stat.label} className="card-hover rounded-2xl border-0 shadow-md text-center overflow-hidden">
-              <CardContent className="pt-6 pb-5">
-                <div className={`text-3xl font-extrabold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
-                  {stat.value}
-                </div>
-                <p className="text-xs text-gray-500 font-medium mt-1">{stat.label}</p>
-              </CardContent>
-            </Card>
+            <div key={stat.label} className="glass-card rounded-2xl text-center p-5">
+              <div className={`text-3xl font-extrabold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
+                {stat.value}
+              </div>
+              <p className="text-xs text-white/45 font-medium mt-1">{stat.label}</p>
+            </div>
           ))}
         </div>
 
@@ -135,7 +133,7 @@ export default function Badges() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
               <Target className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-2xl font-bold">Active Challenges</h2>
+            <h2 className="text-2xl font-bold text-white">Active Challenges</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -144,79 +142,73 @@ export default function Badges() {
               const isCompleted = cp.completed;
 
               return (
-                <Card key={cp.id} className={`rounded-2xl border-0 shadow-md transition-all ${isCompleted ? "ring-2 ring-emerald-400 bg-gradient-to-br from-emerald-50 to-white" : ""}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                          {cp.challenge.title}
-                          {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                        </CardTitle>
-                        <CardDescription className="mt-1">{cp.challenge.description}</CardDescription>
+                <div key={cp.id} className={`glass-card rounded-2xl p-5 transition-all ${isCompleted ? "ring-2 ring-emerald-500/60 bg-emerald-500/10" : ""}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+                        {cp.challenge.title}
+                        {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+                      </h3>
+                      <p className="mt-1 text-white/55">{cp.challenge.description}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-white/45">Progress</span>
+                        <span className="font-bold text-white">
+                          {cp.progress} / {cp.challenge.target}
+                        </span>
+                      </div>
+                      <div className="relative h-2.5 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
+                            isCompleted
+                              ? "bg-gradient-to-r from-emerald-400 to-teal-400"
+                              : "bg-gradient-to-r from-violet-500 to-indigo-500"
+                          }`}
+                          style={{ width: `${Math.min(progress, 100)}%` }}
+                        />
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-500">Progress</span>
-                          <span className="font-bold text-gray-900">
-                            {cp.progress} / {cp.challenge.target}
-                          </span>
-                        </div>
-                        <div className="relative h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
-                              isCompleted
-                                ? "bg-gradient-to-r from-emerald-400 to-teal-400"
-                                : "bg-gradient-to-r from-violet-500 to-indigo-500"
-                            }`}
-                            style={{ width: `${Math.min(progress, 100)}%` }}
-                          />
-                        </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-white/45">
+                        <Clock className="h-4 w-4" />
+                        <span>
+                          Ends {new Date(cp.challenge.endsAt).toLocaleDateString()}
+                        </span>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            Ends {new Date(cp.challenge.endsAt).toLocaleDateString()}
-                          </span>
-                        </div>
-
-                        {isCompleted ? (
-                          <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 border-0 text-white rounded-lg">
-                            Completed
-                          </Badge>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => handleCheckIn(cp.challenge.id)}
-                            disabled={checkInMutation.isPending}
-                            className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 shadow-md shadow-violet-500/20 btn-shimmer"
-                          >
-                            Check In
-                          </Button>
-                        )}
-                      </div>
+                      {isCompleted ? (
+                        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 border-0 text-white rounded-lg">
+                          Completed
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleCheckIn(cp.challenge.id)}
+                          disabled={checkInMutation.isPending}
+                          className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 shadow-md shadow-violet-500/20 btn-shimmer"
+                        >
+                          Check In
+                        </Button>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
 
           {(!challengeProgress || challengeProgress.length === 0) && (
-            <Card className="rounded-2xl border-0 shadow-md">
-              <CardContent className="py-14 text-center">
-                <div className="w-16 h-16 mx-auto bg-violet-100 rounded-full flex items-center justify-center mb-4">
-                  <Target className="h-8 w-8 text-violet-400" />
-                </div>
-                <p className="text-gray-600 font-medium">No active challenges at the moment.</p>
-                <p className="text-sm text-gray-400 mt-1">Check back soon for new challenges!</p>
-              </CardContent>
-            </Card>
+            <div className="glass-card rounded-2xl py-14 text-center">
+              <div className="w-16 h-16 mx-auto bg-violet-500/20 rounded-full flex items-center justify-center mb-4">
+                <Target className="h-8 w-8 text-violet-400" />
+              </div>
+              <p className="text-white/60 font-medium">No active challenges at the moment.</p>
+              <p className="text-sm text-white/35 mt-1">Check back soon for new challenges!</p>
+            </div>
           )}
         </section>
 
@@ -226,36 +218,32 @@ export default function Badges() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
               <Trophy className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-2xl font-bold">Earned Badges</h2>
+            <h2 className="text-2xl font-bold text-white">Earned Badges</h2>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {myBadges?.map((badge) => (
-              <Card key={badge.id} className="card-hover text-center rounded-2xl border-0 shadow-md overflow-hidden">
-                <CardContent className="pt-6">
-                  <div className="text-5xl mb-3">{badge.icon}</div>
-                  <h3 className="font-bold text-sm mb-1">{badge.name}</h3>
-                  <p className="text-xs text-gray-500 mb-2">{badge.description}</p>
-                  <p className="text-xs text-violet-500 font-medium">
-                    Earned {(() => { const d = new Date(badge.earnedAt); return (d.getFullYear() > 3000 ? new Date(d.getTime() / 1000) : d).toLocaleDateString(); })()}
-                  </p>
-                </CardContent>
-              </Card>
+              <div key={badge.id} className="glass-card text-center rounded-2xl p-6 hover:scale-[1.02] transition-transform">
+                <div className="text-5xl mb-3">{badge.icon}</div>
+                <h3 className="font-bold text-sm mb-1 text-white">{badge.name}</h3>
+                <p className="text-xs text-white/40 mb-2">{badge.description}</p>
+                <p className="text-xs text-violet-400 font-medium">
+                  Earned {(() => { const d = new Date(badge.earnedAt); return (d.getFullYear() > 3000 ? new Date(d.getTime() / 1000) : d).toLocaleDateString(); })()}
+                </p>
+              </div>
             ))}
           </div>
 
           {(!myBadges || myBadges.length === 0) && (
-            <Card className="rounded-2xl border-0 shadow-md">
-              <CardContent className="py-14 text-center">
-                <div className="w-16 h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                  <Award className="h-8 w-8 text-amber-400" />
-                </div>
-                <p className="text-gray-600 font-medium">No badges earned yet.</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Complete challenges and engage with businesses to earn badges!
-                </p>
-              </CardContent>
-            </Card>
+            <div className="glass-card rounded-2xl py-14 text-center">
+              <div className="w-16 h-16 mx-auto bg-amber-500/20 rounded-full flex items-center justify-center mb-4">
+                <Award className="h-8 w-8 text-amber-400" />
+              </div>
+              <p className="text-white/60 font-medium">No badges earned yet.</p>
+              <p className="text-sm text-white/35 mt-1">
+                Complete challenges and engage with businesses to earn badges!
+              </p>
+            </div>
           )}
         </section>
 
@@ -263,24 +251,22 @@ export default function Badges() {
         {lockedBadges.length > 0 && (
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center">
-                <Award className="h-5 w-5 text-gray-400" />
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <Award className="h-5 w-5 text-white/30" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-400">Locked Badges</h2>
+              <h2 className="text-2xl font-bold text-white/40">Locked Badges</h2>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {lockedBadges.map((badge) => (
-                <Card key={badge.id} className="text-center rounded-2xl border-0 shadow-sm opacity-50 hover:opacity-70 transition">
-                  <CardContent className="pt-6">
-                    <div className="text-5xl mb-3 grayscale">{badge.icon}</div>
-                    <h3 className="font-bold text-sm mb-1">{badge.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">{badge.description}</p>
-                    <p className="text-xs text-gray-400">
-                      Requirement: {badge.requirement}
-                    </p>
-                  </CardContent>
-                </Card>
+                <div key={badge.id} className="glass-card text-center rounded-2xl p-6 opacity-45 hover:opacity-65 transition-opacity">
+                  <div className="text-5xl mb-3 grayscale">{badge.icon}</div>
+                  <h3 className="font-bold text-sm mb-1 text-white">{badge.name}</h3>
+                  <p className="text-xs text-white/35 mb-2">{badge.description}</p>
+                  <p className="text-xs text-white/30">
+                    Requirement: {badge.requirement}
+                  </p>
+                </div>
               ))}
             </div>
           </section>

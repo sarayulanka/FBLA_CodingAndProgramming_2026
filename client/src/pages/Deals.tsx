@@ -52,11 +52,11 @@ export default function Deals() {
 
         {!isLoading && deals && deals.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-20 h-20 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 mx-auto bg-emerald-500/20 rounded-full flex items-center justify-center mb-4">
               <Tag className="w-10 h-10 text-emerald-400" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">No deals available yet</h3>
-            <p className="text-gray-500">Check back soon for exclusive offers from local businesses!</p>
+            <h3 className="text-2xl font-bold text-white mb-2">No deals available yet</h3>
+            <p className="text-white/55">Check back soon for exclusive offers from local businesses!</p>
           </div>
         )}
 
@@ -77,56 +77,52 @@ function DealCard({ deal }: { deal: any }) {
   const categories = deal.business?.categories ? JSON.parse(deal.business.categories) : [];
 
   return (
-    <Card className="card-hover overflow-hidden rounded-2xl border-0 shadow-md bg-gradient-to-br from-white to-emerald-50/50">
-      <CardHeader>
-        <div className="flex items-start justify-between mb-3">
-          <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 border-0 text-white rounded-lg px-3 py-1 font-semibold shadow-lg shadow-emerald-500/20">
-            Special Offer
-          </Badge>
-          {deal.expiresAt && (
-            <div className="flex items-center text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
-              <Calendar className="w-3 h-3 mr-1" />
-              Expires {new Date(deal.expiresAt).toLocaleDateString()}
+    <div className="glass-card overflow-hidden rounded-2xl p-6">
+      <div className="flex items-start justify-between mb-3">
+        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 border-0 text-white rounded-lg px-3 py-1 font-semibold shadow-lg shadow-emerald-500/25">
+          Special Offer
+        </Badge>
+        {deal.expiresAt && (
+          <div className="flex items-center text-xs text-white/45 bg-white/8 px-2.5 py-1 rounded-lg">
+            <Calendar className="w-3 h-3 mr-1" />
+            Expires {new Date(deal.expiresAt).toLocaleDateString()}
+          </div>
+        )}
+      </div>
+
+      <h3 className="text-xl font-bold text-white mb-2">{deal.title}</h3>
+
+      {deal.description && (
+        <p className="text-white/60 text-base leading-relaxed mb-3">{deal.description}</p>
+      )}
+
+      {deal.code && (
+        <div className="mt-4 p-4 bg-emerald-500/15 border-2 border-dashed border-emerald-500/40 rounded-xl">
+          <p className="text-xs text-white/45 mb-1 font-medium uppercase tracking-wider">Promo Code</p>
+          <p className="text-xl font-extrabold text-emerald-400 font-mono tracking-wider">{deal.code}</p>
+        </div>
+      )}
+
+      {deal.business && (
+        <div className="mt-5 pt-5 border-t border-white/8 space-y-2">
+          <p className="font-bold text-white">{deal.business.name}</p>
+          <div className="flex items-start gap-1.5 text-sm text-white/45">
+            <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-400" />
+            <span>
+              {deal.business.address}, {deal.business.city}, {deal.business.state}
+            </span>
+          </div>
+          {categories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {categories.slice(0, 2).map((cat: any) => (
+                <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-500/20 text-violet-300 border-violet-500/20">
+                  {cat.title}
+                </Badge>
+              ))}
             </div>
           )}
         </div>
-
-        <CardTitle className="text-xl font-bold">{deal.title}</CardTitle>
-
-        {deal.description && (
-          <CardDescription className="text-base leading-relaxed">
-            {deal.description}
-          </CardDescription>
-        )}
-
-        {deal.code && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-dashed border-emerald-300 rounded-xl">
-            <p className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wider">Promo Code</p>
-            <p className="text-xl font-extrabold text-emerald-700 font-mono tracking-wider">{deal.code}</p>
-          </div>
-        )}
-
-        {deal.business && (
-          <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
-            <p className="font-bold text-gray-900">{deal.business.name}</p>
-            <div className="flex items-start gap-1.5 text-sm text-gray-500">
-              <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-400" />
-              <span>
-                {deal.business.address}, {deal.business.city}, {deal.business.state}
-              </span>
-            </div>
-            {categories.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {categories.slice(0, 2).map((cat: any) => (
-                  <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-50 text-violet-700 border-violet-100">
-                    {cat.title}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </CardHeader>
-    </Card>
+      )}
+    </div>
   );
 }

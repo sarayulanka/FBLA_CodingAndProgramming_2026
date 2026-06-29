@@ -174,15 +174,15 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
         </div>
 
         {/* Chat body */}
-        <div className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="flex-1 overflow-y-auto bg-slate-900/95">
           {displayMessages.length === 0 ? (
             /* Empty state */
             <div className="flex flex-col items-center justify-center h-full px-6 py-8">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center mb-4">
-                <MessageSquare className="w-8 h-8 text-blue-500/60" />
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center mb-4 border border-blue-500/20">
+                <MessageSquare className="w-8 h-8 text-blue-400/70" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-1">How can I help?</h3>
-              <p className="text-sm text-gray-500 mb-6 text-center">
+              <h3 className="text-lg font-semibold text-white mb-1">How can I help?</h3>
+              <p className="text-sm text-white/45 mb-6 text-center">
                 Ask me anything about BizBloom or pick a topic below.
               </p>
               <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
@@ -191,9 +191,9 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
                     key={i}
                     onClick={() => handleSend(topic.prompt)}
                     disabled={chatMutation.isPending}
-                    className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-gray-200 bg-white text-left text-sm font-medium text-gray-700 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700 transition-all shadow-sm hover:shadow disabled:opacity-50"
+                    className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-left text-sm font-medium text-white/70 hover:border-blue-400/40 hover:bg-blue-500/10 hover:text-white transition-all disabled:opacity-50"
                   >
-                    <topic.icon className="w-4 h-4 text-blue-500 shrink-0" />
+                    <topic.icon className="w-4 h-4 text-blue-400 shrink-0" />
                     {topic.label}
                   </button>
                 ))}
@@ -217,14 +217,14 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
                       "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                       msg.role === "user"
                         ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-md"
-                        : "bg-white text-gray-800 border border-gray-100 shadow-sm rounded-bl-md"
+                        : "bg-white/8 text-white/85 border border-white/10 rounded-bl-md"
                     )}
                   >
                     {msg.content}
                   </div>
                   {msg.role === "user" && (
-                    <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="w-3.5 h-3.5 text-gray-600" />
+                    <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-white/60" />
                     </div>
                   )}
                 </div>
@@ -235,7 +235,7 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shrink-0 shadow-sm">
                     <Sparkles className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                  <div className="bg-white/8 border border-white/10 rounded-2xl rounded-bl-md px-4 py-3">
                     <div className="flex gap-1.5">
                       <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                       <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -251,7 +251,7 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
         </div>
 
         {/* Input */}
-        <div className="bg-white border-t px-4 py-3">
+        <div className="bg-slate-900/95 border-t border-white/10 px-4 py-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -271,7 +271,7 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
               }}
               placeholder="Ask anything..."
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition max-h-24 min-h-[40px]"
+              className="flex-1 resize-none rounded-xl border border-white/10 bg-white/8 text-white placeholder:text-white/35 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400/50 transition max-h-24 min-h-[40px]"
             />
             <Button
               type="submit"
@@ -286,7 +286,7 @@ export function HelpPanel({ open, onClose, nearbyBusinesses }: HelpPanelProps) {
               )}
             </Button>
           </form>
-          <p className="text-[10px] text-gray-400 text-center mt-2">Powered by AI — responses may not be perfect</p>
+          <p className="text-[10px] text-white/30 text-center mt-2">Powered by AI — responses may not be perfect</p>
         </div>
       </div>
     </>

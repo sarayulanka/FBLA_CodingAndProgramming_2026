@@ -134,12 +134,12 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
               : "Create Account"}
           </Button>
 
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-white/50">
             {mode === "login" ? "Don't have an account? " : "Already have an account? "}
             <button
               type="button"
               onClick={() => setMode(mode === "login" ? "register" : "login")}
-              className="text-violet-600 font-medium hover:underline"
+              className="text-violet-400 font-medium hover:underline"
             >
               {mode === "login" ? "Sign up" : "Sign in"}
             </button>

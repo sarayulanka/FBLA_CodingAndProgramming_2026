@@ -47,12 +47,12 @@ export default function Trending() {
       {/* Content */}
       <div className="container py-12">
         <Tabs defaultValue="recommendations" className="w-full">
-          <TabsList className="grid w-full max-w-sm mx-auto grid-cols-2 mb-10 p-1.5 bg-violet-50 rounded-2xl h-auto">
-            <TabsTrigger value="recommendations" disabled={!isAuthenticated} className="rounded-xl py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 font-medium">
+          <TabsList className="grid w-full max-w-sm mx-auto grid-cols-2 mb-10 p-1.5 bg-white/8 rounded-2xl h-auto border border-white/10">
+            <TabsTrigger value="recommendations" disabled={!isAuthenticated} className="rounded-xl py-2.5 data-[state=active]:bg-white/15 data-[state=active]:shadow-md data-[state=active]:text-violet-300 text-white/60 font-medium">
               <Sparkles className="w-4 h-4 mr-2" />
               For You
             </TabsTrigger>
-            <TabsTrigger value="leaderboard" className="rounded-xl py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 font-medium">
+            <TabsTrigger value="leaderboard" className="rounded-xl py-2.5 data-[state=active]:bg-white/15 data-[state=active]:shadow-md data-[state=active]:text-violet-300 text-white/60 font-medium">
               <Trophy className="w-4 h-4 mr-2" />
               Top Rated
             </TabsTrigger>
@@ -60,19 +60,19 @@ export default function Trending() {
 
           <TabsContent value="recommendations">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Recommended For You</h2>
-              <p className="text-gray-500">Personalized suggestions based on your favorites</p>
+              <h2 className="text-2xl font-bold text-white mb-2">Recommended For You</h2>
+              <p className="text-white/55">Personalized suggestions based on your favorites</p>
             </div>
 
             {recommendationsLoading && <GridSkeleton />}
 
             {!recommendationsLoading && recommendations && recommendations.length === 0 && (
               <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto bg-violet-100 rounded-full flex items-center justify-center mb-4">
+                <div className="w-20 h-20 mx-auto bg-violet-500/20 rounded-full flex items-center justify-center mb-4">
                   <Sparkles className="w-10 h-10 text-violet-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Start Building Your Recommendations</h3>
-                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                <h3 className="text-2xl font-bold text-white mb-2">Start Building Your Recommendations</h3>
+                <p className="text-white/55 mb-6 max-w-md mx-auto">
                   Favorite 3-5 businesses you love to get personalized recommendations!
                 </p>
                 <Button onClick={() => setLocation("/")} className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600">
@@ -92,8 +92,8 @@ export default function Trending() {
 
           <TabsContent value="leaderboard">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Top Rated Businesses</h2>
-              <p className="text-gray-500">Highest-rated businesses in the community</p>
+              <h2 className="text-2xl font-bold text-white mb-2">Top Rated Businesses</h2>
+              <p className="text-white/55">Highest-rated businesses in the community</p>
             </div>
 
             {leaderboardLoading && <GridSkeleton />}
@@ -137,11 +137,11 @@ function GridSkeleton() {
 function EmptyState({ icon: Icon, title, description }: { icon: any; title: string; description: string }) {
   return (
     <div className="text-center py-16">
-      <div className="w-20 h-20 mx-auto bg-violet-100 rounded-full flex items-center justify-center mb-4">
+      <div className="w-20 h-20 mx-auto bg-violet-500/20 rounded-full flex items-center justify-center mb-4">
         <Icon className="w-10 h-10 text-violet-400" />
       </div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500">{description}</p>
+      <h3 className="text-2xl font-bold text-white mb-2">{title}</h3>
+      <p className="text-white/55">{description}</p>
     </div>
   );
 }
@@ -155,7 +155,7 @@ function BusinessCard({ business, rank, showTrophy }: { business: any; rank?: nu
   if (!business.imageUrl || imgFailed) return null;
 
   return (
-    <Card className="card-hover overflow-hidden relative rounded-2xl border-0 shadow-md group">
+    <div className="glass-card overflow-hidden relative rounded-2xl group">
       {rank && (
         <div className={`absolute top-3 left-3 z-10 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-lg ${
           rank === 1 ? "bg-gradient-to-br from-amber-400 to-amber-500" :
@@ -176,35 +176,35 @@ function BusinessCard({ business, rank, showTrophy }: { business: any; rank?: nu
         />
       </div>
 
-      <CardHeader>
-        <CardTitle className="line-clamp-1 text-lg">{business.name}</CardTitle>
-        <CardDescription className="space-y-2">
+      <div className="p-4">
+        <h3 className="line-clamp-1 text-lg font-semibold text-white mb-2">{business.name}</h3>
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-amber-50 px-2 py-0.5 rounded-lg">
+            <div className="flex items-center bg-amber-500/20 px-2 py-0.5 rounded-lg">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span className="ml-1 font-bold text-amber-700 text-sm">{rating.toFixed(1)}</span>
+              <span className="ml-1 font-bold text-amber-300 text-sm">{rating.toFixed(1)}</span>
             </div>
-            <span className="text-gray-400 text-sm">({business.reviewCount} reviews)</span>
+            <span className="text-white/45 text-sm">({business.reviewCount} reviews)</span>
             {business.price && (
-              <span className="font-semibold text-emerald-600 text-sm">{business.price}</span>
+              <span className="font-semibold text-emerald-400 text-sm">{business.price}</span>
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {categories.slice(0, 2).map((cat: any) => (
-              <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-50 text-violet-700 border-violet-100">
+              <Badge key={cat.alias} variant="secondary" className="text-xs rounded-lg bg-violet-500/20 text-violet-300 border-violet-500/20">
                 {cat.title}
               </Badge>
             ))}
           </div>
-        </CardDescription>
-      </CardHeader>
+        </div>
+      </div>
 
-      <CardFooter className="text-sm text-gray-500 pt-0">
-        <MapPin className="w-3.5 h-3.5 mr-1.5 text-violet-400" />
+      <div className="px-4 pb-4 text-sm text-white/40 flex items-center">
+        <MapPin className="w-3.5 h-3.5 mr-1.5 text-violet-400 shrink-0" />
         <span className="line-clamp-1">
           {business.address}, {business.city}, {business.state}
         </span>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

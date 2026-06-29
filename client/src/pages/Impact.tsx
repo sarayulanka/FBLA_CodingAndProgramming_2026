@@ -23,10 +23,10 @@ import { formatDistanceToNow } from "date-fns";
 
 /** Maps a sentiment percentage (0–100) to a colour and label */
 function sentimentLabel(score: number) {
-  if (score >= 70) return { label: "Thriving", color: "text-emerald-600", bg: "bg-emerald-50", bar: "bg-emerald-500" };
-  if (score >= 50) return { label: "Positive", color: "text-blue-600", bg: "bg-blue-50", bar: "bg-blue-500" };
-  if (score >= 35) return { label: "Mixed", color: "text-amber-600", bg: "bg-amber-50", bar: "bg-amber-500" };
-  return { label: "Needs Love", color: "text-red-500", bg: "bg-red-50", bar: "bg-red-400" };
+  if (score >= 70) return { label: "Thriving", color: "text-emerald-400", bg: "bg-emerald-500/15", bar: "bg-emerald-500" };
+  if (score >= 50) return { label: "Positive", color: "text-blue-400", bg: "bg-blue-500/15", bar: "bg-blue-500" };
+  if (score >= 35) return { label: "Mixed", color: "text-amber-400", bg: "bg-amber-500/15", bar: "bg-amber-500" };
+  return { label: "Needs Love", color: "text-red-400", bg: "bg-red-500/15", bar: "bg-red-400" };
 }
 
 /** Renders a single activity feed item (review or favorite) */
@@ -47,49 +47,49 @@ function FeedItem({ item }: { item: any }) {
   } catch {}
 
   return (
-    <div className="flex gap-3 py-3 border-b last:border-0">
+    <div className="flex gap-3 py-3 border-b border-white/8 last:border-0">
       {/* Avatar */}
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isReview ? "bg-indigo-100" : "bg-rose-100"}`}>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isReview ? "bg-indigo-500/20" : "bg-rose-500/20"}`}>
         {isReview
-          ? <MessageSquare className="w-4 h-4 text-indigo-600" />
-          : <Heart className="w-4 h-4 text-rose-500" />
+          ? <MessageSquare className="w-4 h-4 text-indigo-400" />
+          : <Heart className="w-4 h-4 text-rose-400" />
         }
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 leading-tight">
-          <span className="text-indigo-700">{item.userName ?? "A neighbor"}</span>
+        <p className="text-sm font-medium text-white/80 leading-tight">
+          <span className="text-violet-300">{item.userName ?? "A neighbor"}</span>
           {isReview
-            ? <> reviewed <span className="font-semibold text-gray-900">{item.businessName}</span></>
-            : <> saved <span className="font-semibold text-gray-900">{item.businessName}</span></>
+            ? <> reviewed <span className="font-semibold text-white">{item.businessName}</span></>
+            : <> saved <span className="font-semibold text-white">{item.businessName}</span></>
           }
         </p>
 
         {isReview && item.rating && (
           <div className="flex items-center gap-1 mt-0.5">
             {[1, 2, 3, 4, 5].map(i => (
-              <Star key={i} className={`w-3 h-3 ${i <= item.rating ? "fill-amber-400 text-amber-400" : "text-gray-200"}`} />
+              <Star key={i} className={`w-3 h-3 ${i <= item.rating ? "fill-amber-400 text-amber-400" : "text-white/20"}`} />
             ))}
             {item.comment && (
-              <span className="ml-1 text-xs text-gray-500 truncate max-w-[200px]">"{item.comment}"</span>
+              <span className="ml-1 text-xs text-white/45 truncate max-w-[200px]">"{item.comment}"</span>
             )}
           </div>
         )}
 
         <div className="flex items-center gap-2 mt-0.5">
           {item.businessCity && (
-            <span className="text-xs text-gray-400">{item.businessCity}</span>
+            <span className="text-xs text-white/40">{item.businessCity}</span>
           )}
           {categories.map(cat => (
-            <Badge key={cat} variant="secondary" className="text-[10px] px-1.5 py-0 rounded-md bg-gray-100 text-gray-600">
+            <Badge key={cat} variant="secondary" className="text-[10px] px-1.5 py-0 rounded-md bg-white/8 text-white/55">
               {cat}
             </Badge>
           ))}
         </div>
       </div>
 
-      <span className="text-[10px] text-gray-400 shrink-0 pt-0.5">{timeAgo}</span>
+      <span className="text-[10px] text-white/35 shrink-0 pt-0.5">{timeAgo}</span>
     </div>
   );
 }
@@ -134,61 +134,57 @@ export default function Impact() {
               icon: Building2,
               label: "Businesses Supported",
               value: impact?.totalBusinessesSupported ?? 0,
-              color: "text-emerald-600",
-              bg: "bg-emerald-50",
+              color: "text-emerald-400",
+              bg: "bg-emerald-500/15",
               loading: impactLoading,
             },
             {
               icon: MessageSquare,
               label: "Community Reviews",
               value: impact?.totalReviews ?? 0,
-              color: "text-indigo-600",
-              bg: "bg-indigo-50",
+              color: "text-indigo-400",
+              bg: "bg-indigo-500/15",
               loading: impactLoading,
             },
             {
               icon: Heart,
               label: "Businesses Saved",
               value: impact?.totalFavorites ?? 0,
-              color: "text-rose-500",
-              bg: "bg-rose-50",
+              color: "text-rose-400",
+              bg: "bg-rose-500/15",
               loading: impactLoading,
             },
             {
               icon: Users,
               label: "Community Members",
               value: impact?.totalUsers ?? 0,
-              color: "text-violet-600",
-              bg: "bg-violet-50",
+              color: "text-violet-400",
+              bg: "bg-violet-500/15",
               loading: impactLoading,
             },
           ].map(({ icon: Icon, label, value, color, bg, loading }) => (
-            <Card key={label} className="rounded-2xl border-0 shadow-sm text-center">
-              <CardContent className="pt-6 pb-5">
-                <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mx-auto mb-3`}>
-                  <Icon className={`w-6 h-6 ${color}`} />
-                </div>
-                {loading ? (
-                  <Skeleton className="h-10 w-16 mx-auto mb-2" />
-                ) : (
-                  <p className={`text-4xl font-extrabold ${color}`}>{value.toLocaleString()}</p>
-                )}
-                <p className="text-sm text-gray-500 mt-1 font-medium">{label}</p>
-              </CardContent>
-            </Card>
+            <div key={label} className="glass-card rounded-2xl text-center p-6">
+              <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mx-auto mb-3`}>
+                <Icon className={`w-6 h-6 ${color}`} />
+              </div>
+              {loading ? (
+                <Skeleton className="h-10 w-16 mx-auto mb-2" />
+              ) : (
+                <p className={`text-4xl font-extrabold ${color}`}>{value.toLocaleString()}</p>
+              )}
+              <p className="text-sm text-white/50 mt-1 font-medium">{label}</p>
+            </div>
           ))}
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* This Week Spotlight */}
-          <Card className="rounded-2xl border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Zap className="w-5 h-5 text-amber-500" />
-                This Week's Momentum
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
+              <Zap className="w-5 h-5 text-amber-400" />
+              This Week's Momentum
+            </div>
+            <div className="space-y-4">
               {impactLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-16 w-full rounded-xl" />
@@ -196,48 +192,46 @@ export default function Impact() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-indigo-50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-indigo-500/15">
                     <div className="flex items-center gap-3">
-                      <MessageSquare className="w-5 h-5 text-indigo-600" />
+                      <MessageSquare className="w-5 h-5 text-indigo-400" />
                       <div>
-                        <p className="font-semibold text-gray-800">Reviews Written</p>
-                        <p className="text-xs text-gray-500">In the last 7 days</p>
+                        <p className="font-semibold text-white">Reviews Written</p>
+                        <p className="text-xs text-white/45">In the last 7 days</p>
                       </div>
                     </div>
-                    <span className="text-3xl font-extrabold text-indigo-600">{impact?.thisWeekReviews ?? 0}</span>
+                    <span className="text-3xl font-extrabold text-indigo-400">{impact?.thisWeekReviews ?? 0}</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-rose-50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-rose-500/15">
                     <div className="flex items-center gap-3">
-                      <Heart className="w-5 h-5 text-rose-500" />
+                      <Heart className="w-5 h-5 text-rose-400" />
                       <div>
-                        <p className="font-semibold text-gray-800">Businesses Saved</p>
-                        <p className="text-xs text-gray-500">In the last 7 days</p>
+                        <p className="font-semibold text-white">Businesses Saved</p>
+                        <p className="text-xs text-white/45">In the last 7 days</p>
                       </div>
                     </div>
-                    <span className="text-3xl font-extrabold text-rose-500">{impact?.thisWeekFavorites ?? 0}</span>
+                    <span className="text-3xl font-extrabold text-rose-400">{impact?.thisWeekFavorites ?? 0}</span>
                   </div>
                   {impact?.topSupportedCity && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-100">
-                      <Award className="w-4 h-4 text-amber-600 shrink-0" />
-                      <p className="text-sm text-amber-800 font-medium">
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/15 border border-amber-500/20">
+                      <Award className="w-4 h-4 text-amber-400 shrink-0" />
+                      <p className="text-sm text-amber-300 font-medium">
                         Most active community: <span className="font-bold">{impact.topSupportedCity}</span>
                       </p>
                     </div>
                   )}
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Community Sentiment */}
-          <Card className="rounded-2xl border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <TrendingUp className="w-5 h-5 text-emerald-500" />
-                Community Sentiment
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              Community Sentiment
+            </div>
+            <div>
               {impactLoading || !sentiment ? (
                 <div className="space-y-3">
                   <Skeleton className="h-24 w-full rounded-xl" />
@@ -248,46 +242,44 @@ export default function Impact() {
                   <div className={`p-5 rounded-xl ${sentiment.bg} text-center`}>
                     <p className={`text-5xl font-extrabold ${sentiment.color}`}>{impact!.avgSentiment}%</p>
                     <p className={`text-lg font-semibold mt-1 ${sentiment.color}`}>{sentiment.label}</p>
-                    <p className="text-xs text-gray-500 mt-1">Based on {impact!.totalReviews} community reviews</p>
+                    <p className="text-xs text-white/45 mt-1">Based on {impact!.totalReviews} community reviews</p>
                   </div>
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-gray-400">
+                    <div className="flex justify-between text-xs text-white/40">
                       <span>Critical</span><span>Positive</span><span>Thriving</span>
                     </div>
-                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${sentiment.bar}`}
                         style={{ width: `${impact!.avgSentiment}%` }}
                       />
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500 leading-relaxed">
+                  <p className="text-sm text-white/50 leading-relaxed">
                     Our AI analyzes every review for sentiment. A score above 65% means the
                     community genuinely loves the local businesses they're discovering.
                   </p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Live Activity Feed */}
-        <Card className="rounded-2xl border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                </span>
-                Live Community Feed
-              </CardTitle>
-              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100">
-                Real-time
-              </Badge>
+        <div className="glass-card rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-lg font-semibold text-white">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
+              Live Community Feed
             </div>
-          </CardHeader>
-          <CardContent>
+            <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/20">
+              Real-time
+            </Badge>
+          </div>
+          <div>
             {feedLoading ? (
               <div className="space-y-4">
                 {[...Array(6)].map((_, i) => (
@@ -301,20 +293,20 @@ export default function Impact() {
                 ))}
               </div>
             ) : !feed || feed.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-white/40">
                 <Globe className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="font-medium">The feed will populate as the community grows.</p>
                 <p className="text-sm mt-1">Write a review or save a business to appear here!</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div>
                 {feed.map((item: any, i: number) => (
                   <FeedItem key={`${item.type}-${item.id}-${i}`} item={item} />
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

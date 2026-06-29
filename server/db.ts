@@ -12,7 +12,7 @@
  *   - Analytics      — aggregated community metrics
  */
 
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, lte, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import {
@@ -732,8 +732,8 @@ export async function getActiveChallenges(): Promise<Challenge[]> {
     .where(
       and(
         eq(challenges.isActive, true),
-        sql`${challenges.startsAt} <= ${now}`,
-        sql`${challenges.endsAt} >= ${now}`
+        lte(challenges.startsAt, now),
+        gte(challenges.endsAt, now)
       )
     );
 }

@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield, List, Map, Sparkles, Mic, MicOff } from "lucide-react";
+import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Award, ArrowRight, Zap, Globe, Shield, List, Map, Sparkles, Mic, MicOff, Shuffle, X } from "lucide-react";
 import { Link } from "wouter";
 import { MapView } from "@/components/Map";
 import { useSearchContext } from "@/contexts/SearchContext";
@@ -45,6 +45,17 @@ interface Business {
     longitude: number;
   };
 }
+
+// Popular chains with their local-equivalent search config
+const CHAINS = [
+  { name: "Starbucks",   domain: "starbucks.com",   term: "coffee",         category: "coffee",           accent: "#00704A" },
+  { name: "McDonald's",  domain: "mcdonalds.com",   term: "burgers",        category: "burgers",          accent: "#FFC72C" },
+  { name: "Chipotle",    domain: "chipotle.com",    term: "mexican food",   category: "mexican",          accent: "#A81612" },
+  { name: "Chick-fil-A", domain: "chick-fil-a.com", term: "chicken",        category: "chicken_wings",    accent: "#E31837" },
+  { name: "Dunkin'",     domain: "dunkindonuts.com",term: "donuts coffee",  category: "donuts",           accent: "#FF6B00" },
+  { name: "Subway",      domain: "subway.com",      term: "sandwiches",     category: "sandwiches",       accent: "#008C15" },
+  { name: "Panera",      domain: "panerabread.com", term: "bakery cafe",    category: "bakeries",         accent: "#714B27" },
+];
 
 // Available business categories for the search filter dropdown
 const CATEGORIES = [
@@ -104,6 +115,8 @@ export default function Home() {
   const [pendingSearch, setPendingSearch] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [isListening, setIsListening] = useState(false);
+  const [surpriseMode, setSurpriseMode] = useState(false);
+  const [selectedChain, setSelectedChain] = useState<typeof CHAINS[0] | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const recognitionRef = useRef<any>(null);
@@ -157,6 +170,16 @@ export default function Home() {
       );
     }
   }, [businesses, setNearbyBusinesses]);
+
+  // When Surprise Me loads results, auto-open a random top-5 business
+  useEffect(() => {
+    if (surpriseMode && businesses?.businesses && businesses.businesses.length > 0) {
+      const pool = businesses.businesses.slice(0, 5);
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      setSelectedBusiness(pick);
+      setSurpriseMode(false);
+    }
+  }, [surpriseMode, businesses]);
 
   /** Drop color-coded pins on the map whenever businesses update */
   const placeMapPins = useCallback(() => {
@@ -233,6 +256,41 @@ export default function Home() {
       }
     } else {
       setShowSearch(true);
+    }
+  };
+
+  /** Surprise Me — picks a random highly-rated local business near the user */
+  const handleSurpriseMe = () => {
+    setSearchTerm("");
+    setCategory("all");
+    setSortBy("rating");
+    setSelectedChain(null);
+    setSurpriseMode(true);
+    setShowSearch(true);
+    if (!location && !locationName && "geolocation" in navigator) {
+      toast.info("Finding your location...");
+      setPendingSearch(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => { setPendingSearch(false); toast.error("Could not get location. Enter one manually."); }
+      );
+    }
+  };
+
+  /** Chain Doppelganger — find the best local substitute for a big chain */
+  const handleChainClick = (chain: typeof CHAINS[0]) => {
+    setSearchTerm(chain.term);
+    setCategory(chain.category);
+    setSortBy("rating");
+    setSelectedChain(chain);
+    setSurpriseMode(false);
+    setShowSearch(true);
+    if (!location && !locationName && "geolocation" in navigator) {
+      setPendingSearch(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => { setPendingSearch(false); toast.error("Could not get location. Enter one manually."); }
+      );
     }
   };
 
@@ -394,6 +452,55 @@ export default function Home() {
                   <Search className="w-5 h-5 mr-2" />
                   Search
                 </Button>
+
+                <Button
+                  onClick={handleSurpriseMe}
+                  variant="outline"
+                  className="w-full md:w-auto h-11 px-6 rounded-xl border-white/30 text-white bg-white/10 hover:bg-white/20 font-semibold backdrop-blur-sm"
+                  size="lg"
+                  title="Pick a random highly-rated local business near you"
+                >
+                  <Shuffle className="w-4 h-4 mr-2" />
+                  Surprise Me
+                </Button>
+              </div>
+
+              {/* Chain Doppelganger Picker */}
+              <div className="mt-5 pt-5 border-t border-white/10">
+                <p className="text-xs text-gray-400 uppercase tracking-widest mb-3 font-medium">
+                  Find your local alternative to →
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {CHAINS.map((chain) => (
+                    <button
+                      key={chain.name}
+                      onClick={() => handleChainClick(chain)}
+                      title={`Find a local alternative to ${chain.name}`}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 active:scale-95 ${
+                        selectedChain?.name === chain.name
+                          ? "ring-2 ring-white shadow-lg scale-105"
+                          : "hover:ring-1 hover:ring-white/40"
+                      }`}
+                      style={{ backgroundColor: chain.accent + "33", border: `1px solid ${chain.accent}66` }}
+                    >
+                      <img
+                        src={`https://www.google.com/s2/favicons?domain=${chain.domain}&sz=32`}
+                        alt={chain.name}
+                        className="w-4 h-4 rounded-sm"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <span className="text-white/90">{chain.name}</span>
+                    </button>
+                  ))}
+                  {selectedChain && (
+                    <button
+                      onClick={() => { setSelectedChain(null); setSearchTerm(""); setCategory("all"); setShowSearch(false); }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-gray-400 bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                    >
+                      <X className="w-3 h-3" /> Clear
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -508,6 +615,26 @@ export default function Home() {
 
           {!isLoading && businesses && businesses.businesses && businesses.businesses.length > 0 && (
             <>
+              {/* Chain Doppelganger banner */}
+              {selectedChain && (
+                <div className="mb-6 p-4 rounded-2xl flex items-center gap-4 border"
+                  style={{ backgroundColor: selectedChain.accent + "12", borderColor: selectedChain.accent + "40" }}>
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${selectedChain.domain}&sz=48`}
+                    alt={selectedChain.name}
+                    className="w-10 h-10 rounded-xl shadow-md"
+                  />
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">
+                      Skip {selectedChain.name} — try one of these local gems instead 🌱
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      These independently owned spots serve the same vibe and keep money in your community.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Results Header with map/list toggle */}
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">

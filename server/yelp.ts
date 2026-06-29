@@ -19,10 +19,10 @@ import {
 // ===== Configuration =====
 
 const YELP_API_BASE = "https://api.yelp.com/v3";
-const YELP_API_KEY = process.env.YELP_API_KEY || "";
 
-if (!YELP_API_KEY) {
-  console.warn("[Yelp API] YELP_API_KEY not configured — using local fallback data");
+// Read lazily so dotenv has time to load before first use
+function getYelpKey(): string {
+  return process.env.YELP_API_KEY || "";
 }
 
 // ===== Shared types =====
@@ -109,12 +109,13 @@ export interface YelpReviewsResponse {
 // ===== Internal helpers =====
 
 async function yelpFetch<T>(path: string): Promise<T> {
-  if (!YELP_API_KEY) {
+  const key = getYelpKey();
+  if (!key) {
     throw new Error("YELP_API_KEY not configured");
   }
 
   const response = await fetch(`${YELP_API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${YELP_API_KEY}` },
+    headers: { Authorization: `Bearer ${key}` },
   });
 
   if (!response.ok) {

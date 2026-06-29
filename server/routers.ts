@@ -637,7 +637,7 @@ export const appRouter = router({
           const sorted = [...ctx.nearbyBusinesses].sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
           for (const b of sorted) {
             const cats = b.categories ? (() => { try { return JSON.parse(b.categories!).map((c: any) => c.title).join(", "); } catch { return b.categories; } })() : "";
-            personalizedSection += `- ${b.name} — ${(b.rating / 10).toFixed(1)} stars${b.distance ? `, ${b.distance.toFixed(1)} miles away` : ""}${cats ? `, ${cats}` : ""}${b.hasDeals ? ", has deals" : ""}\n`;
+            personalizedSection += `- ${b.name} — ${b.rating.toFixed(1)} stars${b.distance ? `, ${b.distance.toFixed(1)} miles away` : ""}${cats ? `, ${cats}` : ""}${b.hasDeals ? ", has deals" : ""}\n`;
           }
           personalizedSection += `\nSTRICT RULE: You may ONLY mention businesses that appear in this exact list above. Do not invent, guess, or add any business names that are not listed here. If you are not 100% certain a business name came from this list, do not mention it. When making recommendations, pick 2-3 from this list only.\n`;
         }

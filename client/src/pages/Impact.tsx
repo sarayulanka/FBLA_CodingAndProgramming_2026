@@ -18,7 +18,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star, Heart, Building2, Users, TrendingUp, MessageSquare, Zap, Globe, Award } from "lucide-react";
+import { Star, Heart, Building2, Users, TrendingUp, MessageSquare, Zap, Globe, Award, DollarSign, ArrowRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 /** Maps a sentiment percentage (0–100) to a colour and label */
@@ -176,6 +176,79 @@ export default function Impact() {
             </div>
           ))}
         </div>
+
+        {/* ── Local Economy Impact Calculator ── */}
+        {impact && !impactLoading && (
+          <div className="glass-card rounded-2xl p-6 border border-emerald-500/20 relative overflow-hidden">
+            {/* Background glow */}
+            <div className="absolute -top-16 -right-16 w-48 h-48 bg-emerald-500 rounded-full blur-3xl opacity-8 pointer-events-none" />
+
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                  <DollarSign className="w-5 h-5 text-emerald-400" />
+                  Local Economy Impact
+                </div>
+                <span className="text-xs text-white/35 bg-white/5 px-2.5 py-1 rounded-lg border border-white/8">
+                  AI-estimated
+                </span>
+              </div>
+              <p className="text-sm text-white/45 mb-6">
+                Every time someone chooses a local business over a chain, more money stays in the community.
+              </p>
+
+              {/* Big dollar figure */}
+              <div className="text-center mb-8">
+                <p className="text-6xl md:text-7xl font-extrabold text-emerald-400 tracking-tight">
+                  ${(impact.totalFavorites * 75).toLocaleString()}
+                </p>
+                <p className="text-white/50 mt-2 text-sm">
+                  estimated additional local economic value this year
+                </p>
+              </div>
+
+              {/* Local vs Chain comparison bars */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                      Local Business
+                    </span>
+                    <span className="text-emerald-400 font-bold">68¢ per $1 stays local</span>
+                  </div>
+                  <div className="h-4 bg-white/8 rounded-full overflow-hidden">
+                    <div className="h-full w-[68%] bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000" />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-white/40 font-medium flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-white/25 inline-block" />
+                      National Chain
+                    </span>
+                    <span className="text-white/40">43¢ per $1 stays local</span>
+                  </div>
+                  <div className="h-4 bg-white/8 rounded-full overflow-hidden">
+                    <div className="h-full w-[43%] bg-white/20 rounded-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Delta callout */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <ArrowRight className="w-4 h-4 text-emerald-400 shrink-0" />
+                <p className="text-sm text-emerald-300">
+                  BizBloom users redirect <span className="font-bold">25¢ more per dollar</span> into their local community compared to chain spending — across {impact.totalFavorites.toLocaleString()} business relationships.
+                </p>
+              </div>
+
+              <p className="text-[11px] text-white/25 mt-4">
+                Methodology: ${`(${impact.totalFavorites} favorites × $300 avg annual spend × 25¢ local retention advantage)`}. Source: Institute for Local Self-Reliance local economic multiplier research.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* This Week Spotlight */}

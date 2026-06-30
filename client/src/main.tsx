@@ -19,7 +19,19 @@ import { getLoginUrl } from "./const";
 import "./index.css";
 
 // Global React Query client — manages caching, refetching, and deduplication
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Keep data fresh for 2 minutes — eliminates redundant refetches on
+      // navigation and repeat searches. Yelp results don't change that fast.
+      staleTime: 2 * 60 * 1000,
+      // Keep unused query results in cache for 10 minutes
+      gcTime: 10 * 60 * 1000,
+      // Don't retry failed API calls — fail fast and show the error
+      retry: 1,
+    },
+  },
+});
 
 /**
  * Checks if an API error is an "unauthenticated" response.

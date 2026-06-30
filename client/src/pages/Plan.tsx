@@ -13,8 +13,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Sparkles, MapPin, Star, Clock, Phone, ChevronRight,
-  Heart, Calendar, RotateCcw, Send
+  Heart, Calendar, RotateCcw, Send, Mic, MicOff
 } from "lucide-react";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 // Cycling placeholder examples
 const EXAMPLES = [
@@ -72,6 +73,11 @@ type Itinerary = {
 
 export default function Plan() {
   const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
+
+  const { isListening, toggle: toggleVoice } = useVoiceInput({
+    onResult: (text) => setPrompt(prev => prev ? `${prev} ${text}` : text),
+  });
   const [prompt, setPrompt] = useState("");
   const [location, setLocation] = useState("");
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -108,6 +114,8 @@ export default function Plan() {
     onSuccess: (_, vars) => {
       setSavedStops(prev => new Set([...prev, vars.yelpId]));
       toast.success("Saved to favorites!");
+      utils.favorites.list.invalidate();
+      utils.analytics.communityImpact.invalidate();
     },
     onError: () => toast.error("Sign in to save favorites"),
   });
@@ -162,15 +170,29 @@ export default function Plan() {
 
           {/* Input card */}
           <div className="glass-dark rounded-2xl p-6 text-left">
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleGenerate(); } }}
-              placeholder={EXAMPLES[placeholderIdx]}
-              rows={3}
-              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 text-base leading-relaxed"
-            />
+            <div className="relative">
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleGenerate(); } }}
+                placeholder={EXAMPLES[placeholderIdx]}
+                rows={3}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 pr-12 text-white placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 text-base leading-relaxed"
+              />
+              <button
+                type="button"
+                onClick={toggleVoice}
+                title={isListening ? "Stop listening" : "Describe your day by voice"}
+                className={`absolute right-3 top-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50"
+                    : "text-white/40 hover:text-white hover:bg-white/20"
+                }`}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+            </div>
             <div className="flex gap-3 mt-3">
               <div className="relative flex-1">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -110,6 +110,7 @@ function FavoriteBusinessCard({ business }: { business: any }) {
     onSuccess: () => {
       toast.success("Removed from favorites");
       utils.favorites.list.invalidate();
+      utils.analytics.communityImpact.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);

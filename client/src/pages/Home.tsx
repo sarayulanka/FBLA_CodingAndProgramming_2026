@@ -43,6 +43,7 @@ import { Search, MapPin, Star, Heart, Phone, ExternalLink, TrendingUp, Users, Aw
 import { Link } from "wouter";
 import { MapView } from "@/components/Map";
 import { useSearchContext } from "@/contexts/SearchContext";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 /** Shape of a business object returned from the Yelp search API */
 interface Business {
@@ -133,12 +134,15 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [pendingSearch, setPendingSearch] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const [isListening, setIsListening] = useState(false);
   const [surpriseMode, setSurpriseMode] = useState(false);
   const [selectedChain, setSelectedChain] = useState<typeof CHAINS[0] | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const recognitionRef = useRef<any>(null);
+
+  const { isListening, toggle: toggleVoice } = useVoiceInput({
+    onResult: (text) => { setSearchTerm(text); setShowSearch(true); },
+    onSearch: () => handleSearch(), // closure avoids TDZ — handleSearch defined below
+  });
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -173,9 +177,15 @@ export default function Home() {
 
   const { data: businesses, isLoading, error } = trpc.business.search.useQuery(searchParams, {
     enabled: showSearch && (!!searchTerm || !!location || !!locationName),
+    // Cache Yelp results for 5 minutes — same search is instant on repeat
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
-  const { data: impact } = trpc.analytics.communityImpact.useQuery();
+  const { data: impact } = trpc.analytics.communityImpact.useQuery(undefined, {
+    // Community stats don't need to be refreshed more than once per session
+    staleTime: 10 * 60 * 1000,
+  });
 
   // Animated count-up for hero stats
   const businessCount = useCountUp(impact?.totalBusinessesSupported);
@@ -320,35 +330,6 @@ export default function Home() {
     }
   };
 
-  const startVoiceSearch = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Voice search isn't supported in this browser. Try Chrome.");
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => { setIsListening(false); toast.error("Couldn't hear that — try again."); };
-    recognition.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setSearchTerm(transcript);
-      setShowSearch(true);
-      setTimeout(() => handleSearch(), 100);
-    };
-
-    recognition.start();
-  };
-
   return (
     <div>
       {/* Hero Section */}
@@ -393,7 +374,7 @@ export default function Home() {
                   />
                   <button
                     type="button"
-                    onClick={startVoiceSearch}
+                    onClick={toggleVoice}
                     title="Search by voice"
                     className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                       isListening
@@ -805,6 +786,7 @@ function BusinessCard({
       utils.favorites.check.invalidate({ yelpId: business.id });
       utils.favorites.list.invalidate();
       utils.gamification.stats.invalidate();
+      utils.analytics.communityImpact.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -816,6 +798,7 @@ function BusinessCard({
       toast.success("Removed from favorites");
       utils.favorites.check.invalidate({ yelpId: business.id });
       utils.favorites.list.invalidate();
+      utils.analytics.communityImpact.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -939,6 +922,10 @@ function BusinessDetailsDialog({
       utils.reviews.myReview.invalidate({ yelpId: business.id });
       utils.gamification.stats.invalidate();
       utils.gamification.myBadges.invalidate();
+      // Refresh AI summary, community stats, and global reviews list immediately
+      utils.business.summarizeReviews.invalidate({ yelpId: business.id });
+      utils.analytics.communityImpact.invalidate();
+      utils.reviews.getAllReviews.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);

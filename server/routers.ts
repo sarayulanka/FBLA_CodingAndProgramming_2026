@@ -14,6 +14,7 @@
  */
 
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { TranscribeStreamingClient, StartStreamTranscriptionCommand, LanguageCode, MediaEncoding } from "@aws-sdk/client-transcribe-streaming";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
@@ -655,7 +656,17 @@ CRITICAL RULE: If the user asks what's good nearby, what to visit, or for recomm
 - **Reviews** ("/community-reviews") — Browse all community reviews, searchable by business name, user, or content
 - **Favorites** ("/favorites") — Saved businesses (sign-in required)
 - **Impact** ("/impact") — Local Impact Dashboard showing community stats, live activity feed, sentiment gauge, and community activity insights with date filters (7d, 30d, all time)
+- **Plan My Day** ("/plan") — AI-powered day planner: describe your ideal day in plain English (e.g. "romantic dinner and drinks in Austin") and BizBloom uses Google Gemini AI to search Yelp and build a full timed itinerary with real local businesses. You can save any stop directly to your Favorites.
 - **Help** — This chat panel, accessible from the nav bar
+
+## How to Use Plan My Day
+1. Click the calendar icon in the nav bar (or go to /plan)
+2. Describe your day in the text box — be as specific or vague as you like
+3. Optionally type a city/state or allow location detection
+4. Click "Generate" — Gemini AI builds a timed itinerary with 4–6 stops at real local businesses (takes about 10–15 seconds)
+5. Click the heart on any stop to save it to your Favorites
+6. Click "Save All" to favorite every stop at once
+7. You can also use the mic button to describe your day by voice
 
 ## How to Search
 1. Go to the Home page
@@ -664,6 +675,7 @@ CRITICAL RULE: If the user asks what's good nearby, what to visit, or for recomm
 4. Choose a sort: Best Match, Highest Rated, Most Reviewed, or Nearest
 5. Click "Search" — business cards appear with photo, rating, price, categories, and distance
 6. Toggle between List view and Map view using the buttons above the results
+7. Voice search: click the mic icon in the search bar and speak your query — powered by AWS Transcribe
 
 ## How to Write a Review
 1. Sign in to your account (click "Sign In" in the top-right)
@@ -896,6 +908,55 @@ IMPORTANT: Only use business names that appear exactly in the list above. One en
         }).filter(Boolean);
 
         return { title: parsed.title, location: locationStr || "your area", stops };
+      }),
+
+    /**
+     * AWS Transcribe Streaming — fallback voice-to-text for non-HTTPS contexts.
+     * Client sends a base64-encoded PCM audio blob (16kHz, 16-bit mono).
+     * Returns the transcribed text.
+     */
+    transcribeAudio: publicProcedure
+      .input(z.object({
+        audioBase64: z.string(), // base64-encoded Int16 PCM, 16kHz mono
+      }))
+      .mutation(async ({ input }) => {
+        const pcmBuffer = Buffer.from(input.audioBase64, "base64");
+
+        const client = new TranscribeStreamingClient({
+          region: process.env.AWS_REGION || "us-east-1",
+        });
+
+        // Convert buffer to an async iterable of audio events
+        const CHUNK = 8192;
+        async function* audioStream() {
+          for (let offset = 0; offset < pcmBuffer.length; offset += CHUNK) {
+            yield { AudioEvent: { AudioChunk: pcmBuffer.slice(offset, offset + CHUNK) } };
+          }
+        }
+
+        const cmd = new StartStreamTranscriptionCommand({
+          LanguageCode: LanguageCode.EN_US,
+          MediaEncoding: MediaEncoding.PCM,
+          MediaSampleRateHertz: 16000,
+          AudioStream: audioStream(),
+        });
+
+        const response = await client.send(cmd);
+        let transcript = "";
+
+        if (response.TranscriptResultStream) {
+          for await (const event of response.TranscriptResultStream) {
+            if (event.TranscriptEvent?.Transcript?.Results) {
+              for (const result of event.TranscriptEvent.Transcript.Results) {
+                if (!result.IsPartial && result.Alternatives?.[0]?.Transcript) {
+                  transcript += result.Alternatives[0].Transcript + " ";
+                }
+              }
+            }
+          }
+        }
+
+        return { transcript: transcript.trim() };
       }),
   }),
 

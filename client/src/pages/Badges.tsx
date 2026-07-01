@@ -176,7 +176,7 @@ export default function Badges() {
                       <div className="flex items-center gap-2 text-sm text-white/45">
                         <Clock className="h-4 w-4" />
                         <span>
-                          Ends {new Date(cp.challenge.endsAt).toLocaleDateString()}
+                          Ends {(() => { const raw = new Date(cp.challenge.endsAt); const d = raw.getFullYear() > 3000 ? new Date(raw.getTime() / 1000) : raw; return d.toLocaleDateString(); })()}
                         </span>
                       </div>
 

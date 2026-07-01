@@ -85,7 +85,7 @@ function DealCard({ deal }: { deal: any }) {
         {deal.expiresAt && (
           <div className="flex items-center text-xs text-white/45 bg-white/8 px-2.5 py-1 rounded-lg">
             <Calendar className="w-3 h-3 mr-1" />
-            Expires {new Date(deal.expiresAt).toLocaleDateString()}
+            Expires {(() => { const raw = new Date(deal.expiresAt); const d = raw.getFullYear() > 3000 ? new Date(raw.getTime() / 1000) : raw; return d.toLocaleDateString(); })()}
           </div>
         )}
       </div>

@@ -143,11 +143,11 @@ function ReviewCard({ review }: { review: any }) {
         <div>
           <p className="font-semibold text-white">{review.userName || "Anonymous"}</p>
           <p className="text-xs text-white/40">
-            {new Date(review.createdAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {(() => {
+              const raw = new Date(review.createdAt);
+              const d = raw.getFullYear() > 3000 ? new Date(raw.getTime() / 1000) : raw;
+              return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+            })()}
           </p>
         </div>
       </div>

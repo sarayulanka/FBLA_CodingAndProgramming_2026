@@ -150,10 +150,10 @@ export default function Plan() {
     <div className="min-h-screen">
 
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-violet-900 via-indigo-900 to-purple-900 py-20">
+      <div className="relative overflow-hidden py-20" style={{background: '#07060f'}}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="blob w-96 h-96 bg-violet-500 -top-20 -left-20 opacity-20 animate-float" />
-          <div className="blob w-64 h-64 bg-pink-500 top-10 right-1/4 opacity-15 animate-float" style={{ animationDelay: "2s" }} />
+          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[700px] h-[400px]" style={{background: 'radial-gradient(ellipse at 50% 0%, rgba(109,40,217,0.22) 0%, transparent 65%)'}} />
+          <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '32px 32px'}} />
         </div>
 
         <div className="container relative z-10 max-w-3xl mx-auto text-center">

@@ -726,7 +726,7 @@ export async function getActiveChallenges(): Promise<Challenge[]> {
   if (!db) throw new Error("Database not available");
 
   const now = new Date();
-  return await db
+  const all = await db
     .select()
     .from(challenges)
     .where(
@@ -736,6 +736,14 @@ export async function getActiveChallenges(): Promise<Challenge[]> {
         gte(challenges.endsAt, now)
       )
     );
+
+  // Deduplicate by title — keep only the first (lowest id) per title
+  const seen = new Set<string>();
+  return all.filter(c => {
+    if (seen.has(c.title)) return false;
+    seen.add(c.title);
+    return true;
+  });
 }
 
 /**
@@ -1007,11 +1015,19 @@ export async function regenerateWeeklyChallenges(): Promise<void> {
     isActive: true,
   });
 
-  // Insert new challenges
-  for (const challenge of selectedChallenges) {
-    await db.insert(challenges).values(challenge);
-  }
+  // Get titles already in the DB for this week to avoid duplicates
+  const existing = await db
+    .select({ title: challenges.title })
+    .from(challenges)
+    .where(eq(challenges.isActive, true));
+  const existingTitles = new Set(existing.map(c => c.title));
 
+  // Insert only challenges whose title isn't already present
+  for (const challenge of selectedChallenges) {
+    if (!existingTitles.has(challenge.title)) {
+      await db.insert(challenges).values(challenge);
+    }
+  }
 }
 
 // ==================== ANALYTICS FUNCTIONS ====================

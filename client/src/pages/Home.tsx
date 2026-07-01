@@ -334,28 +334,22 @@ export default function Home() {
     <div>
       {/* Hero Section */}
       <div className="hero-gradient text-white relative">
-        {/* Floating decorative blobs */}
-        <div className="blob w-72 h-72 bg-violet-500 top-10 -left-20 animate-float" />
-        <div className="blob w-96 h-96 bg-indigo-500 -bottom-20 right-10 animate-float-delayed" />
-        <div className="blob w-48 h-48 bg-pink-500 top-1/2 left-1/3 opacity-20 animate-float" />
-
-        <div className="container py-24 relative z-10">
-          {!isAuthenticated && (
-            <div className="text-center mb-8 animate-slide-up">
-              <Badge className="bg-white/10 text-violet-200 border-violet-400/30 px-5 py-2.5 text-sm font-medium backdrop-blur-sm hover:bg-white/15 transition">
-                Create an account to save favorites and get personalized recommendations
-              </Badge>
-            </div>
-          )}
-
+        <div className="container py-28 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight animate-slide-up tracking-tight">
-              Discover & Support<br />
+            {!isAuthenticated && (
+              <div className="flex justify-center mb-8 animate-slide-up">
+                <span className="inline-flex items-center gap-2 bg-violet-500/10 text-violet-300 border border-violet-500/20 rounded-full px-4 py-1.5 text-sm font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                  Sign up to save favorites &amp; get AI recommendations
+                </span>
+              </div>
+            )}
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-[1.05] animate-slide-up tracking-tight">
+              Discover &amp; Support<br />
               <span className="text-gradient">Local Businesses</span>
             </h1>
-            <p className="text-lg md:text-xl text-gray-300/90 mb-10 leading-relaxed max-w-2xl mx-auto animate-slide-up-delayed">
-              Connect with amazing small businesses in your community.
-              Find local gems, read reviews, and help your neighborhood thrive.
+            <p className="text-base md:text-lg text-white/55 mb-10 leading-relaxed max-w-xl mx-auto animate-slide-up-delayed">
+              Find local gems, read real community reviews, and see the economic impact of shopping local.
             </p>
 
             {/* Search Box - Glassmorphism */}
@@ -537,10 +531,7 @@ export default function Home() {
 
       {/* Features Section */}
       {!showSearch && (
-        <div className="py-24 relative overflow-hidden">
-          {/* Floating glow orbs */}
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-600 rounded-full blur-3xl opacity-10 pointer-events-none animate-float" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600 rounded-full blur-3xl opacity-10 pointer-events-none animate-float-delayed" />
+        <div className="py-24 relative overflow-hidden border-t border-white/[0.04]">
 
           <div className="container relative z-10">
             <div className="text-center mb-16">

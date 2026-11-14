@@ -1,6 +1,6 @@
 # BizBloom
 
-**FBLA Coding and Programming Event 2025-2026**
+This project was created for the FBLA Coding and Programming event 2025-2026 competition year and placed tenth at the international level, and first place at FBLA Maryland State Leadership Conference.
 
 A modern web application designed to help users discover and support small businesses in their local community. Built with React, TypeScript, tRPC, and integrated with the Yelp Fusion API for real-time business data.
 
@@ -265,7 +265,7 @@ Click on any business's review count to instantly scroll to and view all communi
 
 ## License
 
-This project was created for the FBLA Coding and Programming event.
+This project was created for the FBLA Coding and Programming event 2025-2026 competition year and placed tenth at the international level, and first place at FBLA Maryland State Leadership Conference.
 
 ## Credits
 
@@ -276,4 +276,4 @@ This project was created for the FBLA Coding and Programming event.
 
 ---
 
-**Built with ❤️ for FBLA 2025-2026**
+
